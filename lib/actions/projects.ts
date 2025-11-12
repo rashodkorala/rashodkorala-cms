@@ -9,6 +9,7 @@ function transformProject(project: ProjectDB): Project {
     ...project,
     dueDate: project.due_date,
     imageUrl: project.image_url || [],
+    coverImageUrl: project.cover_image_url,
     websiteUrl: project.website_url,
     projectUrl: project.project_url,
     githubUrl: project.github_url,
@@ -90,6 +91,7 @@ export async function createProject(project: ProjectInsert): Promise<Project> {
       user_id: user.id,
       due_date: project.dueDate || null,
       image_url: project.imageUrl || [],
+      cover_image_url: project.coverImageUrl || null,
       website_url: project.websiteUrl || null,
       project_url: project.projectUrl || null,
       github_url: project.githubUrl || null,
@@ -123,6 +125,7 @@ export async function updateProject(project: ProjectUpdate): Promise<Project> {
   const updateData: any = {}
   if (updates.dueDate !== undefined) updateData.due_date = updates.dueDate
   if (updates.imageUrl !== undefined) updateData.image_url = updates.imageUrl || []
+  if (updates.coverImageUrl !== undefined) updateData.cover_image_url = updates.coverImageUrl
   if (updates.websiteUrl !== undefined) updateData.website_url = updates.websiteUrl
   if (updates.projectUrl !== undefined) updateData.project_url = updates.projectUrl
   if (updates.githubUrl !== undefined) updateData.github_url = updates.githubUrl

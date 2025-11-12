@@ -3,15 +3,15 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
+import { createClient } from "@/lib/supabase/client"
 import {
-  Drawer,
-  DrawerClose,
-  DrawerContent,
-  DrawerDescription,
-  DrawerFooter,
-  DrawerHeader,
-  DrawerTitle,
-} from "@/components/ui/drawer"
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -26,7 +26,6 @@ import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
 import type { Project, ProjectInsert, ProjectUpdate } from "@/lib/types/project"
 import { createProject, updateProject } from "@/lib/actions/projects"
-import { useIsMobile } from "@/hooks/use-mobile"
 
 interface ProjectFormProps {
   project?: Project | null
@@ -36,7 +35,7 @@ interface ProjectFormProps {
 
 export function ProjectForm({ project, open, onOpenChange }: ProjectFormProps) {
   const router = useRouter()
-  const isMobile = useIsMobile()
+  const supabase = createClient()
   const isEditing = !!project
 
   const [formData, setFormData] = useState<ProjectInsert>({
@@ -48,6 +47,7 @@ export function ProjectForm({ project, open, onOpenChange }: ProjectFormProps) {
     priority: "Medium",
     dueDate: "",
     imageUrl: [],
+    coverImageUrl: "",
     websiteUrl: "",
     projectUrl: "",
     githubUrl: "",
@@ -57,7 +57,8 @@ export function ProjectForm({ project, open, onOpenChange }: ProjectFormProps) {
 
   const [isLoading, setIsLoading] = useState(false)
   const [techInput, setTechInput] = useState("")
-  const [imageInput, setImageInput] = useState("")
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([])
+  const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({})
 
   useEffect(() => {
     if (project) {
@@ -70,12 +71,15 @@ export function ProjectForm({ project, open, onOpenChange }: ProjectFormProps) {
         priority: project.priority,
         dueDate: project.dueDate || "",
         imageUrl: project.imageUrl || [],
+        coverImageUrl: project.coverImageUrl || "",
         websiteUrl: project.websiteUrl || "",
         projectUrl: project.projectUrl || "",
         githubUrl: project.githubUrl || "",
         technologies: project.technologies || [],
         featured: project.featured,
       })
+      setSelectedFiles([])
+      setPreviewUrls({})
     } else {
       setFormData({
         name: "",
@@ -86,14 +90,73 @@ export function ProjectForm({ project, open, onOpenChange }: ProjectFormProps) {
         priority: "Medium",
         dueDate: "",
         imageUrl: [],
+        coverImageUrl: "",
         websiteUrl: "",
         projectUrl: "",
         githubUrl: "",
         technologies: [],
         featured: false,
       })
+      setSelectedFiles([])
+      setPreviewUrls({})
     }
   }, [project, open])
+
+  // Clean up preview URLs when component unmounts or files change
+  useEffect(() => {
+    return () => {
+      Object.values(previewUrls).forEach((url) => URL.revokeObjectURL(url))
+    }
+  }, [previewUrls])
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || [])
+    if (files.length === 0) return
+
+    // Validate files
+    const validFiles = files.filter((file) => {
+      if (!file.type.startsWith("image/")) {
+        toast.error(`${file.name} is not an image file`)
+        return false
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error(`${file.name} is larger than 10MB`)
+        return false
+      }
+      return true
+    })
+
+    // Create preview URLs
+    const newPreviews: Record<string, string> = {}
+    validFiles.forEach((file) => {
+      newPreviews[file.name] = URL.createObjectURL(file)
+    })
+
+    setSelectedFiles((prev) => [...prev, ...validFiles])
+    setPreviewUrls((prev) => ({ ...prev, ...newPreviews }))
+  }
+
+  const removeFile = (index: number) => {
+    const fileToRemove = selectedFiles[index]
+    if (previewUrls[fileToRemove.name]) {
+      URL.revokeObjectURL(previewUrls[fileToRemove.name])
+    }
+    setSelectedFiles((prev) => prev.filter((_, i) => i !== index))
+    setPreviewUrls((prev) => {
+      const newPreviews = { ...prev }
+      delete newPreviews[fileToRemove.name]
+      return newPreviews
+    })
+  }
+
+  const generateUniqueName = (file: File) => {
+    const extension = file.name.split(".").pop() ?? "jpg"
+    const randomPart =
+      typeof crypto !== "undefined" && crypto.randomUUID
+        ? crypto.randomUUID()
+        : Math.random().toString(36).slice(2)
+    return `${randomPart}.${extension}`
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -142,17 +205,7 @@ export function ProjectForm({ project, open, onOpenChange }: ProjectFormProps) {
     })
   }
 
-  const addImage = () => {
-    if (imageInput.trim()) {
-      setFormData({
-        ...formData,
-        imageUrl: [...(formData.imageUrl || []), imageInput.trim()],
-      })
-      setImageInput("")
-    }
-  }
-
-  const removeImage = (index: number) => {
+  const removeExistingImage = (index: number) => {
     setFormData({
       ...formData,
       imageUrl: formData.imageUrl?.filter((_, i) => i !== index) || [],
@@ -160,17 +213,17 @@ export function ProjectForm({ project, open, onOpenChange }: ProjectFormProps) {
   }
 
   return (
-    <Drawer open={open} onOpenChange={onOpenChange} direction={isMobile ? "bottom" : "right"}>
-      <DrawerContent className="max-h-[90vh] overflow-y-auto">
-        <DrawerHeader>
-          <DrawerTitle>{isEditing ? "Edit Project" : "New Project"}</DrawerTitle>
-          <DrawerDescription>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{isEditing ? "Edit Project" : "New Project"}</DialogTitle>
+          <DialogDescription>
             {isEditing
               ? "Update your project details"
               : "Add a new project to your portfolio"}
-          </DrawerDescription>
-        </DrawerHeader>
-        <form id="project-form" onSubmit={handleSubmit} className="flex flex-col gap-4 px-4">
+          </DialogDescription>
+        </DialogHeader>
+        <form id="project-form" onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="flex flex-col gap-3">
             <Label htmlFor="name">Project Name *</Label>
             <Input
@@ -279,42 +332,126 @@ export function ProjectForm({ project, open, onOpenChange }: ProjectFormProps) {
           </div>
 
           <div className="flex flex-col gap-3">
-            <Label htmlFor="imageUrl">Image URLs</Label>
-            <div className="flex gap-2">
-              <Input
-                id="imageUrl"
-                type="url"
-                value={imageInput}
-                onChange={(e) => setImageInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault()
-                    addImage()
-                  }
-                }}
-                placeholder="Add image URL (press Enter)"
-              />
-              <Button type="button" onClick={addImage} variant="outline">
-                Add
-              </Button>
-            </div>
-            {formData.imageUrl && formData.imageUrl.length > 0 && (
-              <div className="flex flex-col gap-2 mt-2">
-                {formData.imageUrl.map((url, index) => (
+            <Label htmlFor="projectImages">
+              {isEditing ? "Project Images (select files to add)" : "Project Images *"}
+            </Label>
+            <Input
+              id="projectImages"
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              multiple
+              onChange={handleFileChange}
+              required={!isEditing || selectedFiles.length === 0}
+            />
+            <p className="text-xs text-muted-foreground">
+              Supported formats: JPEG, PNG, WEBP, GIF (max 10MB each). You can select multiple files.
+            </p>
+
+            {/* Preview of selected files */}
+            {selectedFiles.length > 0 && (
+              <div className="grid grid-cols-2 gap-2 mt-2">
+                {selectedFiles.map((file, index) => (
                   <div
                     key={index}
-                    className="flex items-center gap-2 px-2 py-1 bg-muted rounded-md text-sm"
+                    className="relative group rounded-lg border overflow-hidden bg-muted"
                   >
-                    <span className="flex-1 truncate">{url}</span>
-                    <button
-                      type="button"
-                      onClick={() => removeImage(index)}
-                      className="ml-1 text-muted-foreground hover:text-foreground"
-                    >
-                      ×
-                    </button>
+                    <div className="aspect-video relative">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={previewUrls[file.name]}
+                        alt={file.name}
+                        className="object-cover w-full h-full"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeFile(index)}
+                        className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <svg
+                          className="h-4 w-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M6 18L18 6M6 6l12 12"
+                          />
+                        </svg>
+                      </button>
+                    </div>
+                    <p className="text-xs p-1 truncate">{file.name}</p>
                   </div>
                 ))}
+              </div>
+            )}
+
+            {/* Existing images (when editing) */}
+            {isEditing && formData.imageUrl && formData.imageUrl.length > 0 && (
+              <div className="mt-2">
+                <Label className="text-sm text-muted-foreground">Existing Images</Label>
+                <div className="grid grid-cols-2 gap-2 mt-2">
+                  {formData.imageUrl.map((url, index) => {
+                    const isCover = formData.coverImageUrl === url
+                    return (
+                      <div
+                        key={index}
+                        className={`relative group rounded-lg border overflow-hidden bg-muted ${
+                          isCover ? "ring-2 ring-primary" : ""
+                        }`}
+                      >
+                        <div className="aspect-video relative">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={url}
+                            alt={`Project image ${index + 1}`}
+                            className="object-cover w-full h-full"
+                            onError={(e) => {
+                              e.currentTarget.style.display = "none"
+                            }}
+                          />
+                          <div className="absolute top-1 left-1 flex gap-1">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setFormData({ ...formData, coverImageUrl: url })
+                              }
+                              className={`bg-background/80 backdrop-blur-sm rounded px-2 py-1 text-xs font-medium transition-opacity ${
+                                isCover
+                                  ? "opacity-100 text-primary"
+                                  : "opacity-0 group-hover:opacity-100"
+                              }`}
+                              title="Set as cover photo"
+                            >
+                              {isCover ? "✓ Cover" : "Set Cover"}
+                            </button>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => removeExistingImage(index)}
+                            className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <svg
+                              className="h-4 w-4"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M6 18L18 6M6 6l12 12"
+                              />
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
               </div>
             )}
           </div>
@@ -411,16 +548,16 @@ export function ProjectForm({ project, open, onOpenChange }: ProjectFormProps) {
             </Label>
           </div>
         </form>
-        <DrawerFooter>
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
           <Button type="submit" form="project-form" disabled={isLoading}>
             {isLoading ? "Saving..." : isEditing ? "Update Project" : "Create Project"}
           </Button>
-          <DrawerClose asChild>
-            <Button type="button" variant="outline">Cancel</Button>
-          </DrawerClose>
-        </DrawerFooter>
-      </DrawerContent>
-    </Drawer>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
 

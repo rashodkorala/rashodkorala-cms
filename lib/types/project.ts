@@ -12,6 +12,7 @@ export interface ProjectDB {
   priority: ProjectPriority
   due_date: string | null
   image_url: string[] | null
+  cover_image_url: string | null
   website_url: string | null
   project_url: string | null
   github_url: string | null
@@ -33,6 +34,7 @@ export interface Project {
   priority: ProjectPriority
   dueDate: string | null
   imageUrl: string[] | null
+  coverImageUrl: string | null
   websiteUrl: string | null
   projectUrl: string | null
   githubUrl: string | null
@@ -52,6 +54,7 @@ export interface ProjectInsert {
   priority: ProjectPriority
   dueDate?: string | null
   imageUrl?: string[] | null
+  coverImageUrl?: string | null
   websiteUrl?: string | null
   projectUrl?: string | null
   githubUrl?: string | null

@@ -1,0 +1,98 @@
+import { CodeBlock } from "@/components/docs/code-block"
+import { Alert, AlertDescription, AlertTitle } from "@/components/docs/alert"
+
+# Projects Management
+
+Complete guide to managing projects in your Personal CMS.
+
+## Overview
+
+The Projects feature allows you to manage your personal projects with:
+
+- Multiple images per project
+- Cover photo selection
+- Status tracking (Planning, In Progress, Completed, On Hold)
+- Progress percentage
+- Priority levels
+- Technology tags
+- Links (website, project, GitHub)
+- Featured project flag
+
+## Creating a Project
+
+1. Navigate to **Projects** in the sidebar
+2. Click **New Project** button
+3. Fill in project details:
+   - **Name**: Project title
+   - **Description**: Detailed description
+   - **Category**: Project category
+   - **Status**: Current status
+   - **Progress**: 0-100%
+   - **Priority**: High, Medium, or Low
+   - **Due Date**: Optional deadline
+4. Upload multiple images:
+   - Click **Select Images** to choose files
+   - Images are uploaded to Supabase Storage
+   - Set a cover image by clicking **Set Cover** on any image
+5. Add links:
+   - **Website URL**: Live project URL
+   - **Project URL**: Project page URL
+   - **GitHub URL**: Repository link
+6. Add technology tags
+7. Mark as **Featured** if desired
+8. Click **Create Project**
+
+## Editing a Project
+
+1. Click the **Edit** button on any project
+2. Modify any fields
+3. Add or remove images
+4. Change the cover image
+5. Click **Update Project**
+
+## Managing Images
+
+### Uploading Images
+
+- Click **Select Images** to choose multiple files
+- Supported formats: JPEG, PNG, WEBP, GIF
+- Maximum file size: 10MB per image
+- Images are automatically uploaded to Supabase Storage
+
+### Setting Cover Image
+
+- Click **Set Cover** on any uploaded image
+- The cover image is highlighted with a border
+- Only one cover image per project
+
+### Removing Images
+
+- Click the **X** button on any image preview
+- Images are removed from the project but remain in storage
+
+## Project Status
+
+Projects can have the following statuses:
+
+- **Planning**: Project is in planning phase
+- **In Progress**: Actively being worked on
+- **Completed**: Project is finished
+- **On Hold**: Temporarily paused
+
+## Priority Levels
+
+- **High**: Urgent or important projects
+- **Medium**: Normal priority
+- **Low**: Low priority or backlog items
+
+## Featured Projects
+
+Mark projects as featured to highlight them on your frontend website. Featured projects typically appear in a special section or homepage.
+
+<Alert variant="info">
+  <AlertTitle>Frontend Integration</AlertTitle>
+  <AlertDescription>
+    Projects can be fetched via API and displayed on your personal website. The cover image URL is available for easy display.
+  </AlertDescription>
+</Alert>
+

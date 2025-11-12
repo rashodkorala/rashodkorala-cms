@@ -4,6 +4,8 @@ import { usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { SidebarTrigger } from "@/components/ui/sidebar"
+import { IconBrandGithub } from "@tabler/icons-react"
+import Link from "next/link"
 
 function getPageTitle(pathname: string): string {
   // Remove leading slash and split by '/'
@@ -56,13 +58,10 @@ export function SiteHeader() {
         <h1 className="text-base font-medium">{pageTitle}</h1>
         <div className="ml-auto flex items-center gap-2">
           <Button variant="ghost" asChild size="sm" className="hidden sm:flex">
-            <a
-              href="https://github.com/shadcn-ui/ui/tree/main/apps/v4/app/(examples)/dashboard"
-              rel="noopener noreferrer"
-              target="_blank"
-            >
+            <Link href="https://github.com/rashodkorala" target="_blank">
+              <IconBrandGithub className="size-4" />
               GitHub
-            </a>
+            </Link>
           </Button>
         </div>
       </div>

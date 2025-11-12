@@ -13,6 +13,7 @@ import {
   IconSearch,
   IconSettings,
   IconTags,
+  IconBook,
 } from "@tabler/icons-react"
 
 import { NavMain } from "@/components/nav-main"
@@ -30,11 +31,6 @@ import {
 // import Image from "next/image"
 // import logo from "@/public/images/logo.jpg"
 const data = {
-  user: {
-    name: "shadcn",
-    email: "m@example.com",
-    avatar: "/avatars/shadcn.jpg",
-  },
   navMain: [
     {
       title: "Dashboard",
@@ -79,6 +75,11 @@ const data = {
   ],
   navSecondary: [
     {
+      title: "Documentation",
+      url: "/protected/docs",
+      icon: IconBook,
+    },
+    {
       title: "Settings",
       url: "#",
       icon: IconSettings,
@@ -121,7 +122,7 @@ export function AppSidebar({
         <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={data.user} />
+        <NavUser />
       </SidebarFooter>
     </Sidebar>
   )
