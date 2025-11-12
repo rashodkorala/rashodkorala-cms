@@ -9,8 +9,31 @@ const defaultUrl = process.env.VERCEL_URL
 
 export const metadata: Metadata = {
   metadataBase: new URL(defaultUrl),
-  title: "Next.js and Supabase Starter Kit",
-  description: "The fastest way to build apps with Next.js and Supabase",
+  title: "Personal CMS",
+  description: "A personal content management system for managing projects and photography",
+  robots: {
+    index: false,
+    follow: false,
+    googleBot: {
+      index: false,
+      follow: false,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
+  openGraph: {
+    title: "Personal CMS",
+    description: "A personal content management system",
+    type: "website",
+    robots: "noindex, nofollow",
+  },
+  twitter: {
+    card: "summary",
+    title: "Personal CMS",
+    description: "A personal content management system",
+    robots: "noindex, nofollow",
+  },
 };
 
 const geistSans = Geist({
@@ -25,13 +48,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={`${geistSans.className} antialiased`}>
+    <html lang="en" suppressHydrationWarning className="dark" style={{ colorScheme: "dark" }}>
+      <body className={`${geistSans.className} antialiased bg-background text-foreground`}>
         <ThemeProvider
           attribute="class"
-          defaultTheme="system"
-          enableSystem
+          defaultTheme="dark"
+          enableSystem={false}
           disableTransitionOnChange
+          storageKey="theme-preference"
         >
           {children}
         </ThemeProvider>
