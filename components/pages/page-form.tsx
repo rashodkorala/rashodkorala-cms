@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
 import {
@@ -24,7 +23,7 @@ import {
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
-import type { Page, PageInsert, PageUpdate } from "@/lib/types/page"
+import type { Page, PageContentType, PageInsert, PageStatus } from "@/lib/types/page"
 import { createPage, updatePage } from "@/lib/actions/pages"
 
 interface PageFormProps {
@@ -50,7 +49,6 @@ const generateUniqueName = (file: File) => {
 }
 
 export function PageForm({ isOpen, onClose, editingPage, allPages }: PageFormProps) {
-  const router = useRouter()
   const supabase = createClient()
   const isEditing = !!editingPage
 
@@ -253,7 +251,7 @@ export function PageForm({ isOpen, onClose, editingPage, allPages }: PageFormPro
             <Label htmlFor="contentType">Content Type *</Label>
             <Select
               value={formData.contentType}
-              onValueChange={(value) => setFormData({ ...formData, contentType: value as any })}
+              onValueChange={(value) => setFormData({ ...formData, contentType: value as PageContentType })}
               disabled={isLoading}
             >
               <SelectTrigger>
@@ -318,7 +316,7 @@ export function PageForm({ isOpen, onClose, editingPage, allPages }: PageFormPro
               <Label htmlFor="status">Status *</Label>
               <Select
                 value={formData.status}
-                onValueChange={(value) => setFormData({ ...formData, status: value as any })}
+                onValueChange={(value) => setFormData({ ...formData, status: value as PageStatus })}
                 disabled={isLoading}
               >
                 <SelectTrigger>
@@ -335,15 +333,15 @@ export function PageForm({ isOpen, onClose, editingPage, allPages }: PageFormPro
             <div>
               <Label htmlFor="parentId">Parent Page</Label>
               <Select
-                value={formData.parentId || ""}
-                onValueChange={(value) => setFormData({ ...formData, parentId: value || null })}
+                value={formData.parentId || "none"}
+                onValueChange={(value) => setFormData({ ...formData, parentId: value === "none" ? null : value })}
                 disabled={isLoading}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="None (Top Level)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None (Top Level)</SelectItem>
+                  <SelectItem value="none">None (Top Level)</SelectItem>
                   {availableParentPages.map((page) => (
                     <SelectItem key={page.id} value={page.id}>
                       {page.title}
