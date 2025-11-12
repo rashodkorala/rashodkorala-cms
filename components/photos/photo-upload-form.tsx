@@ -291,10 +291,11 @@ export function PhotoUploadForm({ open, onOpenChange }: PhotoUploadFormProps) {
         }
 
         const uniqueName = generateUniqueName(file)
+        const filePath = `photography/${uniqueName}`
 
         const { error: storageError } = await supabase.storage
-          .from("photos")
-          .upload(uniqueName, file)
+          .from("media")
+          .upload(filePath, file)
 
         if (storageError) {
           console.error("[BulkUpload] Storage upload error:", storageError)
@@ -303,7 +304,7 @@ export function PhotoUploadForm({ open, onOpenChange }: PhotoUploadFormProps) {
 
         const {
           data: { publicUrl },
-        } = supabase.storage.from("photos").getPublicUrl(uniqueName)
+        } = supabase.storage.from("media").getPublicUrl(filePath)
 
         const fallbackTitle = match.fileName.replace(/\.[^/.]+$/, "")
 

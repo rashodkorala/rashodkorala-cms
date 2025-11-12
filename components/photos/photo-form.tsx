@@ -216,10 +216,11 @@ export function PhotoForm({ photo, open, onOpenChange }: PhotoFormProps) {
         }
 
         const uniqueName = generateUniqueName(selectedFile)
+        const filePath = `photography/${uniqueName}`
 
         const { error: storageError } = await supabase.storage
-          .from("photos")
-          .upload(uniqueName, selectedFile)
+          .from("media")
+          .upload(filePath, selectedFile)
 
         if (storageError) {
           console.error("[PhotoForm] Storage upload error:", storageError)
@@ -228,7 +229,7 @@ export function PhotoForm({ photo, open, onOpenChange }: PhotoFormProps) {
 
         const {
           data: { publicUrl },
-        } = supabase.storage.from("photos").getPublicUrl(uniqueName)
+        } = supabase.storage.from("media").getPublicUrl(filePath)
 
         imageUrl = publicUrl
       }

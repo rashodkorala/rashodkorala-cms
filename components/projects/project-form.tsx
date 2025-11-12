@@ -163,15 +163,57 @@ export function ProjectForm({ project, open, onOpenChange }: ProjectFormProps) {
     setIsLoading(true)
 
     try {
+      // Upload selected files to media bucket
+      const uploadedUrls: string[] = []
+      if (selectedFiles.length > 0) {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser()
+
+        if (!user) {
+          throw new Error("You must be logged in to upload images")
+        }
+
+        for (const file of selectedFiles) {
+          const uniqueName = generateUniqueName(file)
+          const filePath = `projects/${uniqueName}`
+
+          const { error: storageError } = await supabase.storage
+            .from("media")
+            .upload(filePath, file)
+
+          if (storageError) {
+            console.error("[ProjectForm] Storage upload error:", storageError)
+            throw new Error(`Failed to upload image: ${storageError.message}`)
+          }
+
+          const {
+            data: { publicUrl },
+          } = supabase.storage.from("media").getPublicUrl(filePath)
+
+          uploadedUrls.push(publicUrl)
+        }
+      }
+
+      // Combine existing images with newly uploaded ones
+      const allImageUrls = [
+        ...(formData.imageUrl || []),
+        ...uploadedUrls,
+      ]
+
       if (isEditing && project) {
         const updateData: ProjectUpdate = {
           id: project.id,
           ...formData,
+          imageUrl: allImageUrls,
         }
         await updateProject(updateData)
         toast.success("Project updated successfully")
       } else {
-        await createProject(formData)
+        await createProject({
+          ...formData,
+          imageUrl: allImageUrls,
+        })
         toast.success("Project created successfully")
       }
       onOpenChange(false)
