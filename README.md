@@ -2,6 +2,15 @@
 
 A modern, full-featured personal content management system built with Next.js, Supabase, and shadcn/ui. Perfect for managing personal projects, photography portfolios, and content.
 
+## 📸 Preview
+
+
+![Dashboard](public/photo2.png)
+
+![Dashboard](public/photo3.png)
+
+![Dashboard](public/photo1.png)
+
 ## 🚀 Features
 
 ### Core Features

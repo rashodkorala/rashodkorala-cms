@@ -98,7 +98,7 @@ Focus on:
             const jsonMatch = content.match(/```(?:json)?\s*(\{[\s\S]*\})\s*```/) || content.match(/(\{[\s\S]*\})/)
             const jsonString = jsonMatch ? jsonMatch[1] : content
             parsedData = JSON.parse(jsonString)
-        } catch (parseError) {
+        } catch {
             console.error("Failed to parse AI response:", content)
             // Fallback: try to extract fields manually
             parsedData = {
