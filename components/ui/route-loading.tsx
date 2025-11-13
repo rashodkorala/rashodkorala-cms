@@ -2,7 +2,7 @@ export default function RouteLoading() {
     return (
         <div className="flex items-center justify-center min-h-[400px] w-full h-full">
             <div className="flex flex-col items-center gap-4">
-                <div className="w-[200px] h-[200px]">
+                <div className="w-[64px] h-[64px]">
                     <svg
                         xmlns="http://www.w3.org/2000/svg"
                         viewBox="0 0 200 200"
