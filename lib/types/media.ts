@@ -56,6 +56,3 @@ export interface MediaUpdate extends Partial<MediaInsert> {
   id: string
 }
 
-// Alias for backward compatibility
-export type Media = MediaItem
-

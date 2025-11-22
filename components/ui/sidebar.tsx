@@ -185,6 +185,7 @@ function Sidebar({
     )
   }
 
+  // Always render Sheet on mobile (even when closed) so the trigger works
   if (isMobile) {
     return (
       <Sheet open={openMobile} onOpenChange={setOpenMobile} {...props}>
@@ -196,6 +197,8 @@ function Sidebar({
           style={
             {
               width: SIDEBAR_WIDTH_MOBILE,
+              backgroundColor: "var(--sidebar)",
+              color: "var(--sidebar-foreground)",
             } as React.CSSProperties
           }
           side={side}
@@ -204,7 +207,17 @@ function Sidebar({
             <SheetTitle>Sidebar</SheetTitle>
             <SheetDescription>Displays the mobile sidebar.</SheetDescription>
           </SheetHeader>
-          <div className="flex h-full w-full flex-col">{children}</div>
+          <div
+            className="bg-sidebar text-sidebar-foreground flex h-full w-full flex-col"
+            style={
+              {
+                backgroundColor: "var(--sidebar)",
+                color: "var(--sidebar-foreground)",
+              } as React.CSSProperties
+            }
+          >
+            {children}
+          </div>
         </SheetContent>
       </Sheet>
     )

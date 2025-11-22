@@ -26,13 +26,11 @@ export const metadata: Metadata = {
     title: "Personal CMS",
     description: "A personal content management system",
     type: "website",
-    robots: "noindex, nofollow",
   },
   twitter: {
     card: "summary",
     title: "Personal CMS",
     description: "A personal content management system",
-    robots: "noindex, nofollow",
   },
 };
 
