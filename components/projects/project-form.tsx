@@ -350,7 +350,7 @@ export function ProjectForm({ project, open, onOpenChange }: ProjectFormProps) {
       toast.error("Title is required")
       return
     }
-    if (!formData.subtitle.trim()) {
+    if (!formData.subtitle || !formData.subtitle.trim()) {
       toast.error("Subtitle is required")
       return
     }
