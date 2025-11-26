@@ -17,13 +17,14 @@ A modern, full-featured personal content management system built with Next.js, S
 - **Authentication**: Secure password-based authentication with Supabase
 - **Dashboard**: Overview of all your content and statistics
 - **Projects Management**: Track and manage personal projects with:
+  - AI-powered project content generation (optional questionnaire flow)
   - Multiple images per project
-  - Status tracking (Planning, In Progress, Completed, On Hold)
-  - Progress tracking
-  - Priority levels
+  - Status tracking (draft, published, archived)
   - Technology tags
   - Featured projects
-  - Links (website, project, GitHub)
+  - Links (website, GitHub, case study)
+  - Problem/solution descriptions
+  - Features and roles tracking
 
 - **Photography Management**: Organize your photo collection with:
   - Bulk upload support
@@ -58,7 +59,7 @@ Before you begin, ensure you have:
 - **Node.js** 18+ installed
 - **pnpm** package manager (recommended) or npm/yarn
 - A **Supabase** account (free tier works)
-- (Optional) An **OpenAI API key** for AI photo analysis
+- (Optional) An **OpenAI API key** for AI features (photo analysis and project content generation)
 
 ## 🛠️ Installation
 
@@ -121,6 +122,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 - [Photos Setup](./PHOTOS_SETUP.md) - Setting up the photography feature
 - [Bulk Upload Setup](./BULK_UPLOAD_SETUP.md) - Bulk photo upload with metadata
 - [AI Photo Analysis Setup](./AI_PHOTO_ANALYSIS_SETUP.md) - AI-powered metadata generation
+- [AI Project Generation Setup](./AI_PROJECT_GENERATION_SETUP.md) - AI-powered project content generation
 
 ### Database Schema
 
@@ -138,18 +140,36 @@ All tables include:
 
 ### Creating a Project
 
+#### Option 1: AI Questionnaire (Recommended)
+
 1. Navigate to **Projects** in the sidebar
 2. Click **New Project**
-3. Fill in project details:
-   - Name, description, category
-   - Status and progress
-   - Priority level
-   - Due date (optional)
+3. Click **"Use AI Questionnaire (Optional)"** button
+4. Answer 5 steps of questions about your project:
+   - **Step 1**: Basic information (name, category, description)
+   - **Step 2**: Problem & solution
+   - **Step 3**: Features & functionality
+   - **Step 4**: Technical details
+   - **Step 5**: Links & resources
+5. Click **"Generate with AI"** - All fields will be automatically filled
+6. Review and adjust the generated content
+7. Upload images, add any missing details
+8. Click **Create Project**
+
+#### Option 2: Manual Entry
+
+1. Navigate to **Projects** in the sidebar
+2. Click **New Project**
+3. Fill in project details manually:
+   - Title, subtitle, category
+   - Problem and solution descriptions
+   - Features and technology stack
    - Upload multiple images
-   - Add links (website, project, GitHub)
-   - Add technology tags
+   - Add links (live URL, GitHub, case study)
+   - Add roles
    - Mark as featured
-4. Click **Create Project**
+4. (Optional) Use individual AI generation buttons for specific fields
+5. Click **Create Project**
 
 ### Adding Photos
 
@@ -172,7 +192,9 @@ All tables include:
 5. Review and edit metadata
 6. Click **Upload** to process all photos
 
-### AI Photo Analysis
+### AI Features
+
+#### AI Photo Analysis
 
 The CMS includes AI-powered photo analysis using OpenAI's GPT-4 Vision API:
 
@@ -188,12 +210,31 @@ The CMS includes AI-powered photo analysis using OpenAI's GPT-4 Vision API:
 
 See [AI Photo Analysis Setup](./AI_PHOTO_ANALYSIS_SETUP.md) for configuration.
 
+#### AI Project Content Generation
+
+Generate complete project content using AI:
+
+1. Click **"Use AI Questionnaire"** when creating a new project
+2. Answer questions about your project
+3. AI generates all content fields:
+   - Title and subtitle
+   - Problem statement
+   - Solution description
+   - Features list
+   - Technology stack
+   - Roles
+4. Review and refine the generated content
+
+The AI uses GPT-4o-mini for cost-effective content generation. Individual fields can also be generated separately using the AI buttons next to each field.
+
 ## 🏗️ Project Structure
 
 ```
 ├── app/
 │   ├── api/              # API routes
-│   │   └── analyze-photo/ # AI photo analysis endpoint
+│   │   ├── analyze-photo/ # AI photo analysis endpoint
+│   │   ├── generate-project-content/ # AI project field generation
+│   │   └── generate-project-from-questions/ # AI questionnaire endpoint
 │   ├── auth/             # Authentication pages
 │   ├── protected/         # Protected routes (CMS)
 │   │   ├── dashboard/    # Dashboard page
@@ -204,6 +245,7 @@ See [AI Photo Analysis Setup](./AI_PHOTO_ANALYSIS_SETUP.md) for configuration.
 ├── components/
 │   ├── photos/           # Photo-related components
 │   ├── projects/         # Project-related components
+│   │   └── project-questionnaire.tsx # AI questionnaire component
 │   └── ui/               # shadcn/ui components
 ├── lib/
 │   ├── actions/          # Server actions
@@ -259,7 +301,7 @@ Required:
 - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
 
 Optional:
-- `OPENAI_API_KEY` (for AI photo analysis)
+- `OPENAI_API_KEY` (for AI photo analysis and project content generation)
 
 ## 📝 Scripts
 
@@ -304,11 +346,13 @@ This project is open source and available under the [MIT License](LICENSE).
 - Check bucket policies allow uploads
 - Ensure bucket is set to public (for photos)
 
-### AI Analysis Not Working
+### AI Features Not Working
 
 - Check OpenAI API key is set in `.env.local`
 - Verify you have OpenAI credits
 - Check browser console for errors
+- For project generation: Ensure GPT-4o-mini access is enabled
+- For photo analysis: Ensure GPT-4 Vision access is enabled
 
 ### Authentication Issues
 

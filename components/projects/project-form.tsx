@@ -35,6 +35,24 @@ import type {
 } from "@/lib/types/project"
 import { createProject, updateProject } from "@/lib/actions/projects"
 import { generateSlug, validateSlug } from "@/lib/utils/slug"
+import { ProjectQuestionnaire } from "./project-questionnaire"
+
+interface QuestionnaireAnswers {
+  projectName: string
+  category: ProjectCategory | null
+  oneLineDescription: string
+  problem: string
+  targetAudience: string
+  uniqueSolution: string
+  mainFeatures: string
+  userCapabilities: string
+  technologies: string
+  frameworks: string
+  role: string
+  liveUrl: string
+  githubUrl: string
+  caseStudyUrl: string
+}
 
 interface ProjectFormProps {
   project?: Project | null
@@ -76,6 +94,7 @@ export function ProjectForm({ project, open, onOpenChange }: ProjectFormProps) {
   const [galleryFiles, setGalleryFiles] = useState<File[]>([])
   const [galleryPreviews, setGalleryPreviews] = useState<Record<string, string>>({})
   const [autoGenerateSlug, setAutoGenerateSlug] = useState(true)
+  const [showQuestionnaire, setShowQuestionnaire] = useState(false)
   const [aiLoading, setAiLoading] = useState<{
     subtitle?: boolean
     problem?: boolean
@@ -182,8 +201,18 @@ export function ProjectForm({ project, open, onOpenChange }: ProjectFormProps) {
       return
     }
 
+    // Clean up previous preview URL if it was a blob URL
+    if (coverPreview && coverPreview.startsWith("blob:")) {
+      URL.revokeObjectURL(coverPreview)
+    }
+
     setCoverFile(file)
-    setCoverPreview(URL.createObjectURL(file))
+    const previewUrl = URL.createObjectURL(file)
+    setCoverPreview(previewUrl)
+
+    // Clear the existing cover image URL when a new file is selected
+    // This ensures the new file will be uploaded instead of keeping the old one
+    setFormData((prev) => ({ ...prev, coverImageUrl: "" }))
   }
 
   const handleGalleryImagesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -282,6 +311,54 @@ export function ProjectForm({ project, open, onOpenChange }: ProjectFormProps) {
     })
   }
 
+  const handleQuestionnaireGenerate = async (answers: QuestionnaireAnswers) => {
+    setIsLoading(true)
+    try {
+      const response = await fetch("/api/generate-project-from-questions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(answers),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || "Failed to generate content")
+      }
+
+      const generatedData = await response.json()
+
+      // Populate form with generated data
+      setFormData((prev) => ({
+        ...prev,
+        title: generatedData.title,
+        subtitle: generatedData.subtitle,
+        problem: generatedData.problem,
+        solution: generatedData.solution,
+        features: generatedData.features || [],
+        tech: generatedData.tech || [],
+        roles: generatedData.roles || [],
+        category: generatedData.category,
+        liveUrl: generatedData.liveUrl,
+        githubUrl: generatedData.githubUrl,
+        caseStudyUrl: generatedData.caseStudyUrl,
+        slug: generateSlug(generatedData.title),
+      }))
+
+      toast.success("Project content generated! Review and adjust as needed.")
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to generate content. Please fill in the form manually."
+      )
+      throw error
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   const generateWithAI = async (type: "subtitle" | "problem" | "solution" | "features" | "tech") => {
     if (!formData.title.trim()) {
       toast.error("Please enter a project title first")
@@ -350,10 +427,6 @@ export function ProjectForm({ project, open, onOpenChange }: ProjectFormProps) {
       toast.error("Title is required")
       return
     }
-    if (!formData.subtitle || !formData.subtitle.trim()) {
-      toast.error("Subtitle is required")
-      return
-    }
     if (!formData.slug.trim()) {
       toast.error("Slug is required")
       return
@@ -377,41 +450,97 @@ export function ProjectForm({ project, open, onOpenChange }: ProjectFormProps) {
       // Upload cover image
       let coverImageUrl = formData.coverImageUrl
       if (coverFile) {
-        const uniqueName = generateUniqueName(coverFile)
-        const filePath = `cover/${uniqueName}`
+        try {
+          const uniqueName = generateUniqueName(coverFile)
+          const timestamp = Date.now()
+          const filePath = `cover/${timestamp}-${uniqueName}`
 
-        const { error: storageError } = await supabase.storage
-          .from("projects")
-          .upload(filePath, coverFile)
+          console.log("Uploading cover image to:", filePath)
 
-        if (storageError) {
-          throw new Error(`Failed to upload cover image: ${storageError.message}`)
+          const { data: uploadData, error: storageError } = await supabase.storage
+            .from("projects")
+            .upload(filePath, coverFile, {
+              cacheControl: "3600",
+              upsert: false,
+            })
+
+          if (storageError) {
+            console.error("Storage upload error:", storageError)
+
+            // Check if bucket exists
+            if (storageError.message.includes("Bucket not found") || storageError.message.includes("does not exist")) {
+              throw new Error(
+                "Projects storage bucket not found. Please create the 'projects' bucket in Supabase Storage. See documentation for setup instructions."
+              )
+            }
+
+            // Check permissions
+            if (storageError.message.includes("new row violates") || storageError.message.includes("policy")) {
+              throw new Error(
+                "Storage permission denied. Please check your Supabase storage policies. See documentation for setup instructions."
+              )
+            }
+
+            throw new Error(`Failed to upload cover image: ${storageError.message}`)
+          }
+
+          if (!uploadData) {
+            throw new Error("Upload succeeded but no data returned")
+          }
+
+          const {
+            data: { publicUrl },
+          } = supabase.storage.from("projects").getPublicUrl(filePath)
+
+          if (!publicUrl) {
+            throw new Error("Failed to get public URL for uploaded image")
+          }
+
+          coverImageUrl = publicUrl
+          console.log("Cover image uploaded successfully:", publicUrl)
+        } catch (error) {
+          console.error("Error uploading cover image:", error)
+          throw error
         }
-
-        const {
-          data: { publicUrl },
-        } = supabase.storage.from("projects").getPublicUrl(filePath)
-        coverImageUrl = publicUrl
       }
 
       // Upload gallery images
       const uploadedGalleryUrls: string[] = []
       for (const file of galleryFiles) {
-        const uniqueName = generateUniqueName(file)
-        const filePath = `gallery/${uniqueName}`
+        try {
+          const uniqueName = generateUniqueName(file)
+          const timestamp = Date.now()
+          const filePath = `gallery/${timestamp}-${uniqueName}`
 
-        const { error: storageError } = await supabase.storage
-          .from("projects")
-          .upload(filePath, file)
+          const { data: uploadData, error: storageError } = await supabase.storage
+            .from("projects")
+            .upload(filePath, file, {
+              cacheControl: "3600",
+              upsert: false,
+            })
 
-        if (storageError) {
-          throw new Error(`Failed to upload image: ${storageError.message}`)
+          if (storageError) {
+            console.error("Gallery image upload error:", storageError)
+            throw new Error(`Failed to upload gallery image: ${storageError.message}`)
+          }
+
+          if (!uploadData) {
+            throw new Error("Upload succeeded but no data returned")
+          }
+
+          const {
+            data: { publicUrl },
+          } = supabase.storage.from("projects").getPublicUrl(filePath)
+
+          if (!publicUrl) {
+            throw new Error("Failed to get public URL for uploaded image")
+          }
+
+          uploadedGalleryUrls.push(publicUrl)
+        } catch (error) {
+          console.error("Error uploading gallery image:", error)
+          throw error
         }
-
-        const {
-          data: { publicUrl },
-        } = supabase.storage.from("projects").getPublicUrl(filePath)
-        uploadedGalleryUrls.push(publicUrl)
       }
 
       // Combine existing gallery images with newly uploaded ones
@@ -443,9 +572,16 @@ export function ProjectForm({ project, open, onOpenChange }: ProjectFormProps) {
         router.refresh()
       }, 100)
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to save project"
-      )
+      console.error("Error saving project:", error)
+      const errorMessage = error instanceof Error ? error.message : "Failed to save project"
+      toast.error(errorMessage)
+      // Log full error for debugging
+      if (error instanceof Error) {
+        console.error("Error details:", {
+          message: error.message,
+          stack: error.stack,
+        })
+      }
     } finally {
       setIsLoading(false)
     }
@@ -461,6 +597,22 @@ export function ProjectForm({ project, open, onOpenChange }: ProjectFormProps) {
               ? "Update your project details"
               : "Add a new project to your portfolio"}
           </DialogDescription>
+          {!isEditing && (
+            <div className="pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowQuestionnaire(true)}
+                className="gap-2"
+              >
+                <IconSparkles className="size-4" />
+                Use AI Questionnaire (Optional)
+              </Button>
+              <p className="text-xs text-muted-foreground mt-1">
+                Answer a few questions and we&apos;ll generate all content for you
+              </p>
+            </div>
+          )}
         </DialogHeader>
         <form id="project-form" onSubmit={handleSubmit} className="flex flex-col gap-6">
           {/* Basic Section */}
@@ -479,7 +631,7 @@ export function ProjectForm({ project, open, onOpenChange }: ProjectFormProps) {
               </div>
               <div className="flex flex-col gap-2">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="subtitle">Subtitle *</Label>
+                  <Label htmlFor="subtitle">Subtitle</Label>
                   <Button
                     type="button"
                     variant="ghost"
@@ -502,8 +654,7 @@ export function ProjectForm({ project, open, onOpenChange }: ProjectFormProps) {
                   onChange={(e) =>
                     setFormData({ ...formData, subtitle: e.target.value })
                   }
-                  placeholder="Short one-liner summary"
-                  required
+                  placeholder="Short one-liner summary (optional)"
                 />
               </div>
             </div>
@@ -880,21 +1031,34 @@ export function ProjectForm({ project, open, onOpenChange }: ProjectFormProps) {
                 accept="image/jpeg,image/png,image/webp,image/gif"
                 onChange={handleCoverImageChange}
               />
-              {coverPreview && (
+              {(coverFile || coverPreview || formData.coverImageUrl) && (
                 <div className="relative w-full max-w-md aspect-video rounded-lg border overflow-hidden bg-muted">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={coverPreview}
+                    src={
+                      coverFile && coverPreview
+                        ? coverPreview // New file preview (blob URL)
+                        : formData.coverImageUrl || coverPreview || "" // Existing image or fallback
+                    }
                     alt="Cover preview"
                     className="object-cover w-full h-full"
                   />
                   <button
                     type="button"
                     onClick={() => {
+                      // Clean up blob URL if it exists
+                      if (coverPreview && coverPreview.startsWith("blob:")) {
+                        URL.revokeObjectURL(coverPreview)
+                      }
                       setCoverFile(null)
                       setCoverPreview("")
+                      // If editing, also clear the existing cover image URL
+                      if (isEditing) {
+                        setFormData((prev) => ({ ...prev, coverImageUrl: "" }))
+                      }
                     }}
-                    className="absolute top-2 right-2 bg-destructive text-destructive-foreground rounded-full p-1"
+                    className="absolute top-2 right-2 bg-destructive text-destructive-foreground rounded-full p-1 hover:bg-destructive/90"
+                    title="Remove cover image"
                   >
                     <svg
                       className="h-4 w-4"
@@ -1020,11 +1184,18 @@ export function ProjectForm({ project, open, onOpenChange }: ProjectFormProps) {
             {isLoading
               ? "Saving..."
               : isEditing
-              ? "Update Project"
-              : "Create Project"}
+                ? "Update Project"
+                : "Create Project"}
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      {/* Questionnaire Dialog */}
+      <ProjectQuestionnaire
+        open={showQuestionnaire}
+        onClose={() => setShowQuestionnaire(false)}
+        onGenerate={handleQuestionnaireGenerate}
+      />
     </Dialog>
   )
 }

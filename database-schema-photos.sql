@@ -97,3 +97,5 @@ CREATE TRIGGER update_photos_updated_at
   FOR EACH ROW
   EXECUTE FUNCTION update_photos_updated_at();
 
+
+
