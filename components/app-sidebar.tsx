@@ -6,12 +6,9 @@ import {
   IconDashboard,
   IconFileDescription,
   IconFolder,
-  IconHelp,
   IconListDetails,
   IconPhoto,
-  IconSearch,
   IconSettings,
-  IconTags,
   IconBook,
 } from "@tabler/icons-react"
 
@@ -61,11 +58,6 @@ const data = {
       url: "/protected/analytics",
       icon: IconChartBar,
     },
-    {
-      title: "Tags",
-      url: "/protected/tags",
-      icon: IconTags,
-    },
   ],
   navSecondary: [
     {
@@ -75,19 +67,9 @@ const data = {
     },
     {
       title: "Settings",
-      url: "#",
+      url: "/protected/settings",
       icon: IconSettings,
-    },
-    {
-      title: "Get Help",
-      url: "#",
-      icon: IconHelp,
-    },
-    {
-      title: "Search",
-      url: "#",
-      icon: IconSearch,
-    },
+    }
   ],
 }
 
