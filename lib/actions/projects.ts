@@ -2,23 +2,54 @@
 
 import { createClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
-import type { Project, ProjectDB, ProjectInsert, ProjectUpdate } from "@/lib/types/project"
+import type {
+  Project,
+  ProjectDB,
+  ProjectInsert,
+  ProjectUpdate,
+  ProjectStatus,
+  ProjectCategory,
+} from "@/lib/types/project"
 
 function transformProject(project: ProjectDB): Project {
   return {
-    ...project,
-    dueDate: project.due_date,
-    imageUrl: project.image_url || [],
-    coverImageUrl: project.cover_image_url,
-    websiteUrl: project.website_url,
-    projectUrl: project.project_url,
+    id: project.id,
+    userId: project.user_id,
+    slug: project.slug,
+    title: project.title,
+    subtitle: project.subtitle,
+    problem: project.problem,
+    solution: project.solution,
+    roles: project.roles,
+    features: project.features,
+    tech: project.tech,
+    liveUrl: project.live_url,
     githubUrl: project.github_url,
+    caseStudyUrl: project.case_study_url,
+    coverImageUrl: project.cover_image_url,
+    galleryImageUrls: project.gallery_image_urls,
+    category: project.category,
+    status: project.status,
+    featured: project.featured,
+    sortOrder: project.sort_order,
+    createdAt: project.created_at,
+    updatedAt: project.updated_at,
   }
 }
 
-export async function getProjects(): Promise<Project[]> {
+interface GetProjectsOptions {
+  status?: ProjectStatus
+  category?: ProjectCategory
+  featured?: boolean
+  limit?: number
+  includeDrafts?: boolean
+}
+
+export async function getProjects(
+  options: GetProjectsOptions = {}
+): Promise<Project[]> {
   const supabase = await createClient()
-  
+
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -27,11 +58,36 @@ export async function getProjects(): Promise<Project[]> {
     throw new Error("Unauthorized")
   }
 
-  const { data, error } = await supabase
+  let query = supabase
     .from("projects")
     .select("*")
     .eq("user_id", user.id)
-    .order("created_at", { ascending: false })
+
+  if (options.status) {
+    query = query.eq("status", options.status)
+  } else if (!options.includeDrafts) {
+    // By default, exclude drafts unless explicitly requested
+    query = query.neq("status", "draft")
+  }
+
+  if (options.category) {
+    query = query.eq("category", options.category)
+  }
+
+  if (options.featured !== undefined) {
+    query = query.eq("featured", options.featured)
+  }
+
+  if (options.limit) {
+    query = query.limit(options.limit)
+  }
+
+  // Sort by sort_order first, then updated_at desc
+  query = query.order("sort_order", { ascending: true }).order("updated_at", {
+    ascending: false,
+  })
+
+  const { data, error } = await query
 
   if (error) {
     throw new Error(`Failed to fetch projects: ${error.message}`)
@@ -42,7 +98,7 @@ export async function getProjects(): Promise<Project[]> {
 
 export async function getProject(id: string): Promise<Project | null> {
   const supabase = await createClient()
-  
+
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -68,9 +124,32 @@ export async function getProject(id: string): Promise<Project | null> {
   return data ? transformProject(data) : null
 }
 
+/**
+ * Get a published project by slug (for public access)
+ */
+export async function getProjectBySlug(slug: string): Promise<Project | null> {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from("projects")
+    .select("*")
+    .eq("slug", slug)
+    .eq("status", "published")
+    .single()
+
+  if (error) {
+    if (error.code === "PGRST116") {
+      return null
+    }
+    throw new Error(`Failed to fetch project: ${error.message}`)
+  }
+
+  return data ? transformProject(data) : null
+}
+
 export async function createProject(project: ProjectInsert): Promise<Project> {
   const supabase = await createClient()
-  
+
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -82,21 +161,24 @@ export async function createProject(project: ProjectInsert): Promise<Project> {
   const { data, error } = await supabase
     .from("projects")
     .insert({
-      name: project.name,
-      description: project.description || null,
-      category: project.category,
-      status: project.status,
-      progress: project.progress,
-      priority: project.priority,
       user_id: user.id,
-      due_date: project.dueDate || null,
-      image_url: project.imageUrl || [],
-      cover_image_url: project.coverImageUrl || null,
-      website_url: project.websiteUrl || null,
-      project_url: project.projectUrl || null,
+      slug: project.slug,
+      title: project.title,
+      subtitle: project.subtitle || null,
+      problem: project.problem || null,
+      solution: project.solution || null,
+      roles: project.roles || [],
+      features: project.features || [],
+      tech: project.tech || [],
+      live_url: project.liveUrl || null,
       github_url: project.githubUrl || null,
-      technologies: project.technologies || [],
+      case_study_url: project.caseStudyUrl || null,
+      cover_image_url: project.coverImageUrl || null,
+      gallery_image_urls: project.galleryImageUrls || [],
+      category: project.category || null,
+      status: project.status || "draft",
       featured: project.featured || false,
+      sort_order: project.sortOrder || 0,
     })
     .select()
     .single()
@@ -106,12 +188,15 @@ export async function createProject(project: ProjectInsert): Promise<Project> {
   }
 
   revalidatePath("/protected/projects")
+  revalidatePath("/api/projects")
   return transformProject(data)
 }
 
-export async function updateProject(project: ProjectUpdate): Promise<Project> {
+export async function updateProject(
+  project: ProjectUpdate
+): Promise<Project> {
   const supabase = await createClient()
-  
+
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -122,21 +207,27 @@ export async function updateProject(project: ProjectUpdate): Promise<Project> {
 
   const { id, ...updates } = project
 
-  const updateData: any = {}
-  if (updates.dueDate !== undefined) updateData.due_date = updates.dueDate
-  if (updates.imageUrl !== undefined) updateData.image_url = updates.imageUrl || []
-  if (updates.coverImageUrl !== undefined) updateData.cover_image_url = updates.coverImageUrl
-  if (updates.websiteUrl !== undefined) updateData.website_url = updates.websiteUrl
-  if (updates.projectUrl !== undefined) updateData.project_url = updates.projectUrl
+  const updateData: Partial<ProjectDB> = {}
+  if (updates.slug !== undefined) updateData.slug = updates.slug
+  if (updates.title !== undefined) updateData.title = updates.title
+  if (updates.subtitle !== undefined) updateData.subtitle = updates.subtitle
+  if (updates.problem !== undefined) updateData.problem = updates.problem
+  if (updates.solution !== undefined) updateData.solution = updates.solution
+  if (updates.roles !== undefined) updateData.roles = updates.roles || []
+  if (updates.features !== undefined) updateData.features = updates.features || []
+  if (updates.tech !== undefined) updateData.tech = updates.tech || []
+  if (updates.liveUrl !== undefined) updateData.live_url = updates.liveUrl
   if (updates.githubUrl !== undefined) updateData.github_url = updates.githubUrl
-  if (updates.name !== undefined) updateData.name = updates.name
-  if (updates.description !== undefined) updateData.description = updates.description
+  if (updates.caseStudyUrl !== undefined)
+    updateData.case_study_url = updates.caseStudyUrl
+  if (updates.coverImageUrl !== undefined)
+    updateData.cover_image_url = updates.coverImageUrl
+  if (updates.galleryImageUrls !== undefined)
+    updateData.gallery_image_urls = updates.galleryImageUrls || []
   if (updates.category !== undefined) updateData.category = updates.category
   if (updates.status !== undefined) updateData.status = updates.status
-  if (updates.progress !== undefined) updateData.progress = updates.progress
-  if (updates.priority !== undefined) updateData.priority = updates.priority
-  if (updates.technologies !== undefined) updateData.technologies = updates.technologies
   if (updates.featured !== undefined) updateData.featured = updates.featured
+  if (updates.sortOrder !== undefined) updateData.sort_order = updates.sortOrder
 
   const { data, error } = await supabase
     .from("projects")
@@ -151,12 +242,13 @@ export async function updateProject(project: ProjectUpdate): Promise<Project> {
   }
 
   revalidatePath("/protected/projects")
+  revalidatePath("/api/projects")
   return transformProject(data)
 }
 
 export async function deleteProject(id: string): Promise<void> {
   const supabase = await createClient()
-  
+
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -176,5 +268,49 @@ export async function deleteProject(id: string): Promise<void> {
   }
 
   revalidatePath("/protected/projects")
+  revalidatePath("/api/projects")
 }
 
+/**
+ * Duplicate a project (creates a copy with "-copy" appended to slug)
+ */
+export async function duplicateProject(id: string): Promise<Project> {
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    throw new Error("Unauthorized")
+  }
+
+  // Get the original project
+  const original = await getProject(id)
+  if (!original) {
+    throw new Error("Project not found")
+  }
+
+  // Create a new project with copied data
+  const newProject: ProjectInsert = {
+    slug: `${original.slug}-copy`,
+    title: `${original.title} (Copy)`,
+    subtitle: original.subtitle,
+    problem: original.problem,
+    solution: original.solution,
+    roles: original.roles,
+    features: original.features,
+    tech: original.tech,
+    liveUrl: original.liveUrl,
+    githubUrl: original.githubUrl,
+    caseStudyUrl: original.caseStudyUrl,
+    coverImageUrl: original.coverImageUrl,
+    galleryImageUrls: original.galleryImageUrls,
+    category: original.category,
+    status: "draft", // Always duplicate as draft
+    featured: false, // Don't duplicate featured status
+    sortOrder: original.sortOrder,
+  }
+
+  return createProject(newProject)
+}

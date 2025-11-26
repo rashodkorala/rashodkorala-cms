@@ -1,18 +1,22 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { IconDotsVertical, IconEdit, IconFolder, IconPlus, IconRefresh, IconStar, IconTrash, IconTrendingUp } from "@tabler/icons-react"
+import {
+  IconDotsVertical,
+  IconEdit,
+  IconFolder,
+  IconPlus,
+  IconRefresh,
+  IconStar,
+  IconTrash,
+  IconCopy,
+  IconEye,
+} from "@tabler/icons-react"
 import { toast } from "sonner"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import {
-  Card,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
+import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,6 +24,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import {
   Table,
   TableBody,
@@ -29,8 +40,9 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { ProjectForm } from "./project-form"
-import type { Project } from "@/lib/types/project"
-import { deleteProject } from "@/lib/actions/projects"
+import { ProjectPreview } from "./project-preview"
+import type { Project, ProjectCategory, ProjectStatus } from "@/lib/types/project"
+import { deleteProject, duplicateProject } from "@/lib/actions/projects"
 import { useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
 
@@ -42,13 +54,36 @@ const Projects = ({ initialProjects }: ProjectsProps) => {
   const router = useRouter()
   const [projects, setProjects] = useState<Project[]>(initialProjects)
   const [isFormOpen, setIsFormOpen] = useState(false)
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false)
   const [editingProject, setEditingProject] = useState<Project | null>(null)
+  const [previewProject, setPreviewProject] = useState<Project | null>(null)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [statusFilter, setStatusFilter] = useState<string>("all")
+  const [categoryFilter, setCategoryFilter] = useState<string>("all")
 
   // Sync state when initialProjects changes (after refresh)
   useEffect(() => {
     setProjects(initialProjects)
   }, [initialProjects])
+
+  // Filter projects
+  const filteredProjects = projects.filter((project) => {
+    if (statusFilter !== "all" && project.status !== statusFilter) {
+      return false
+    }
+    if (categoryFilter !== "all" && project.category !== categoryFilter) {
+      return false
+    }
+    return true
+  })
+
+  // Sort by sort_order then updated_at desc
+  const sortedProjects = [...filteredProjects].sort((a, b) => {
+    if (a.sortOrder !== b.sortOrder) {
+      return a.sortOrder - b.sortOrder
+    }
+    return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+  })
 
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this project?")) {
@@ -67,9 +102,26 @@ const Projects = ({ initialProjects }: ProjectsProps) => {
     }
   }
 
+  const handleDuplicate = async (id: string) => {
+    try {
+      await duplicateProject(id)
+      toast.success("Project duplicated successfully")
+      router.refresh()
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to duplicate project"
+      )
+    }
+  }
+
   const handleEdit = (project: Project) => {
     setEditingProject(project)
     setIsFormOpen(true)
+  }
+
+  const handlePreview = (project: Project) => {
+    setPreviewProject(project)
+    setIsPreviewOpen(true)
   }
 
   const handleNewProject = () => {
@@ -89,7 +141,6 @@ const Projects = ({ initialProjects }: ProjectsProps) => {
     setIsRefreshing(true)
     try {
       router.refresh()
-      // Small delay to show loading state
       await new Promise((resolve) => setTimeout(resolve, 500))
       toast.success("Data refreshed")
     } catch {
@@ -99,88 +150,35 @@ const Projects = ({ initialProjects }: ProjectsProps) => {
     }
   }
 
-  const inProgress = projects.filter((p) => p.status === "In Progress").length
-  const completed = projects.filter((p) => p.status === "Completed").length
-  const onHold = projects.filter((p) => p.status === "On Hold").length
+  const getStatusBadgeColor = (status: ProjectStatus) => {
+    switch (status) {
+      case "published":
+        return "text-green-600 dark:text-green-400"
+      case "draft":
+        return "text-yellow-600 dark:text-yellow-400"
+      case "archived":
+        return "text-gray-600 dark:text-gray-400"
+      default:
+        return ""
+    }
+  }
+
+  const categories: ProjectCategory[] = ["startup", "client", "personal", "school"]
+  const statuses: ProjectStatus[] = ["draft", "published", "archived"]
 
   return (
     <div className="flex flex-grow flex-col">
       <div className="@container/main flex flex-1 flex-col gap-2">
         <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
-          {/* Stats Cards */}
-          <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-1 gap-4 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs sm:grid-cols-2 lg:px-6 @xl/main:grid-cols-4">
-            <Card className="@container/card">
+          {/* Stats Card */}
+          <div className="px-4 lg:px-6">
+            <Card>
               <CardHeader>
                 <CardDescription>Total Projects</CardDescription>
-                <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+                <CardTitle className="text-2xl font-semibold tabular-nums">
                   {projects.length}
                 </CardTitle>
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline">
-                    <IconTrendingUp />
-                    Active
-                  </Badge>
-                </div>
               </CardHeader>
-              <CardFooter className="flex-col items-start gap-1.5 text-sm">
-                <div className="line-clamp-1 flex gap-2 font-medium">
-                  All your projects in one place
-                </div>
-              </CardFooter>
-            </Card>
-            <Card className="@container/card">
-              <CardHeader>
-                <CardDescription>In Progress</CardDescription>
-                <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-                  {inProgress}
-                </CardTitle>
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="text-yellow-600 dark:text-yellow-400">
-                    Active
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardFooter className="flex-col items-start gap-1.5 text-sm">
-                <div className="line-clamp-1 flex gap-2 font-medium">
-                  Projects currently being worked on
-                </div>
-              </CardFooter>
-            </Card>
-            <Card className="@container/card">
-              <CardHeader>
-                <CardDescription>Completed</CardDescription>
-                <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-                  {completed}
-                </CardTitle>
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="text-green-600 dark:text-green-400">
-                    Done
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardFooter className="flex-col items-start gap-1.5 text-sm">
-                <div className="line-clamp-1 flex gap-2 font-medium">
-                  Successfully completed projects
-                </div>
-              </CardFooter>
-            </Card>
-            <Card className="@container/card">
-              <CardHeader>
-                <CardDescription>On Hold</CardDescription>
-                <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-                  {onHold}
-                </CardTitle>
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="text-gray-600 dark:text-gray-400">
-                    Paused
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardFooter className="flex-col items-start gap-1.5 text-sm">
-                <div className="line-clamp-1 flex gap-2 font-medium">
-                  Projects temporarily paused
-                </div>
-              </CardFooter>
             </Card>
           </div>
 
@@ -190,7 +188,7 @@ const Projects = ({ initialProjects }: ProjectsProps) => {
               <div>
                 <h2 className="text-lg font-semibold">All Projects</h2>
                 <p className="text-sm text-muted-foreground">
-                  Manage and track your projects
+                  Manage your portfolio projects
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -201,10 +199,7 @@ const Projects = ({ initialProjects }: ProjectsProps) => {
                   size="sm"
                 >
                   <IconRefresh
-                    className={cn(
-                      "size-4",
-                      isRefreshing && "animate-spin"
-                    )}
+                    className={cn("size-4", isRefreshing && "animate-spin")}
                   />
                   <span className="hidden sm:inline">Refresh</span>
                 </Button>
@@ -214,92 +209,117 @@ const Projects = ({ initialProjects }: ProjectsProps) => {
                 </Button>
               </div>
             </div>
+
+            {/* Filters */}
+            <div className="flex gap-4 mb-4">
+              <div className="flex flex-col gap-2 w-48">
+                <label className="text-sm font-medium">Status</label>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    {statuses.map((status) => (
+                      <SelectItem key={status} value={status}>
+                        {status.charAt(0).toUpperCase() + status.slice(1)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex flex-col gap-2 w-48">
+                <label className="text-sm font-medium">Category</label>
+                <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Categories</SelectItem>
+                    {categories.map((category) => (
+                      <SelectItem key={category} value={category}>
+                        {category.charAt(0).toUpperCase() + category.slice(1)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
             <div className="rounded-lg border">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Project</TableHead>
+                    <TableHead>Title</TableHead>
+                    <TableHead>Slug</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>Progress</TableHead>
-                    <TableHead>Priority</TableHead>
-                    <TableHead>Due Date</TableHead>
+                    <TableHead>Category</TableHead>
                     <TableHead>Featured</TableHead>
+                    <TableHead>Updated At</TableHead>
+                    <TableHead>Sort Order</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {projects.length === 0 ? (
+                  {sortedProjects.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                        No projects yet. Click "New Project" to get started.
+                      <TableCell
+                        colSpan={8}
+                        className="text-center py-8 text-muted-foreground"
+                      >
+                        No projects found. Click &quot;New Project&quot; to get started.
                       </TableCell>
                     </TableRow>
                   ) : (
-                    projects.map((project) => (
+                    sortedProjects.map((project) => (
                       <TableRow key={project.id}>
                         <TableCell>
                           <div className="flex items-center gap-2">
                             <IconFolder className="size-4 text-muted-foreground" />
                             <div>
-                              <div className="font-medium">{project.name}</div>
-                              <div className="text-sm text-muted-foreground">
-                                {project.category}
-                              </div>
+                              <div className="font-medium">{project.title}</div>
+                              {project.subtitle && (
+                                <div className="text-sm text-muted-foreground">
+                                  {project.subtitle ?? ""}
+                                </div>
+                              )}
                             </div>
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Badge
-                            variant="outline"
-                            className={
-                              project.status === "Completed"
-                                ? "text-green-600 dark:text-green-400"
-                                : project.status === "In Progress"
-                                ? "text-yellow-600 dark:text-yellow-400"
-                                : project.status === "On Hold"
-                                ? "text-gray-600 dark:text-gray-400"
-                                : ""
-                            }
-                          >
-                            {project.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <div className="w-24 h-2 bg-muted rounded-full overflow-hidden">
-                              <div
-                                className="h-full bg-primary rounded-full transition-all"
-                                style={{ width: `${project.progress}%` }}
-                              />
-                            </div>
-                            <span className="text-sm text-muted-foreground">
-                              {project.progress}%
-                            </span>
-                          </div>
+                          <code className="text-xs bg-muted px-1.5 py-0.5 rounded">
+                            {project.slug}
+                          </code>
                         </TableCell>
                         <TableCell>
                           <Badge
                             variant="outline"
-                            className={
-                              project.priority === "High"
-                                ? "text-red-600 dark:text-red-400"
-                                : project.priority === "Medium"
-                                ? "text-yellow-600 dark:text-yellow-400"
-                                : "text-blue-600 dark:text-blue-400"
-                            }
+                            className={getStatusBadgeColor(project.status)}
                           >
-                            {project.priority}
+                            {project.status.charAt(0).toUpperCase() +
+                              project.status.slice(1)}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {project.dueDate
-                            ? new Date(project.dueDate).toLocaleDateString()
-                            : "-"}
+                        <TableCell>
+                          {project.category ? (
+                            <Badge variant="outline">
+                              {project.category.charAt(0).toUpperCase() +
+                                project.category.slice(1)}
+                            </Badge>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
                         </TableCell>
                         <TableCell>
                           {project.featured && (
                             <IconStar className="size-4 text-yellow-500 fill-yellow-500" />
                           )}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground text-sm">
+                          {new Date(project.updatedAt).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {project.sortOrder}
                         </TableCell>
                         <TableCell>
                           <DropdownMenu>
@@ -313,10 +333,20 @@ const Projects = ({ initialProjects }: ProjectsProps) => {
                                 <span className="sr-only">Open menu</span>
                               </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-32">
+                            <DropdownMenuContent align="end" className="w-40">
+                              <DropdownMenuItem onClick={() => handlePreview(project)}>
+                                <IconEye className="size-4 mr-2" />
+                                Preview
+                              </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleEdit(project)}>
                                 <IconEdit className="size-4 mr-2" />
                                 Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleDuplicate(project.id)}
+                              >
+                                <IconCopy className="size-4 mr-2" />
+                                Duplicate
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem
@@ -349,9 +379,18 @@ const Projects = ({ initialProjects }: ProjectsProps) => {
           }
         }}
       />
+      <ProjectPreview
+        project={previewProject}
+        open={isPreviewOpen}
+        onOpenChange={(open) => {
+          setIsPreviewOpen(open)
+          if (!open) {
+            setPreviewProject(null)
+          }
+        }}
+      />
     </div>
   )
 }
 
 export default Projects
-
