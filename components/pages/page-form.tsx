@@ -25,6 +25,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
 import type { Page, PageContentType, PageInsert, PageStatus } from "@/lib/types/page"
 import { createPage, updatePage } from "@/lib/actions/pages"
+import Image from "next/image"
 
 interface PageFormProps {
   isOpen: boolean
@@ -302,10 +303,12 @@ export function PageForm({ isOpen, onClose, editingPage, allPages }: PageFormPro
             />
             {previewUrl && (
               <div className="mt-2">
-                <img
-                  src={previewUrl}
+                <Image
+                  src={previewUrl as string}
                   alt="Featured"
                   className="max-w-full h-48 object-cover rounded-lg border"
+                  width={100}
+                  height={100}
                 />
               </div>
             )}

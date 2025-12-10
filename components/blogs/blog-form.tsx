@@ -26,6 +26,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
 import type { Blog, BlogInsert, BlogUpdate } from "@/lib/types/blog"
 import { createBlog, updateBlog } from "@/lib/actions/blogs"
+import Image from "next/image"
 
 interface BlogFormProps {
   isOpen: boolean
@@ -277,10 +278,12 @@ export function BlogForm({ isOpen, onClose, editingBlog }: BlogFormProps) {
             />
             {previewUrl && (
               <div className="mt-2">
-                <img
-                  src={previewUrl}
+                <Image
+                  src={previewUrl as string}
                   alt="Featured"
                   className="max-w-full h-48 object-cover rounded-lg border"
+                  width={100}
+                  height={100}
                 />
               </div>
             )}

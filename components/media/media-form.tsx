@@ -26,7 +26,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
 import type { MediaItem, MediaInsert, MediaUpdate } from "@/lib/types/media"
 import { createMedia, updateMedia } from "@/lib/actions/media"
-
+import Image from "next/image"
 interface MediaFormProps {
   isOpen: boolean
   onClose: (shouldRefresh?: boolean) => void
@@ -223,10 +223,12 @@ export function MediaForm({ isOpen, onClose, editingMedia }: MediaFormProps) {
             />
             {previewUrl && (
               <div className="mt-2">
-                <img
-                  src={previewUrl}
+                <Image
+                  src={previewUrl as string}
                   alt="Preview"
                   className="max-w-full h-48 object-contain rounded-lg border"
+                  width={100}
+                  height={100}
                 />
               </div>
             )}
