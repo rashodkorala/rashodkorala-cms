@@ -48,10 +48,10 @@ export async function getAnalyticsSummary(
     totalPageviews: Number(result.total_pageviews) || 0,
     uniqueVisitors: Number(result.unique_visitors) || 0,
     uniqueSessions: Number(result.unique_sessions) || 0,
-    topPages: (result.top_pages as any[]) || [],
-    topDomains: (result.top_domains as any[]) || [],
-    deviceBreakdown: (result.device_breakdown as any[]) || [],
-    dailyViews: (result.daily_views as any[]) || [],
+    topPages: (result.top_pages as Array<{ path: string; views: number }>) || [],
+    topDomains: (result.top_domains as Array<{ domain: string; views: number }>) || [],
+    deviceBreakdown: (result.device_breakdown as Array<{ device: string; count: number }>) || [],
+    dailyViews: (result.daily_views as Array<{ date: string; views: number }>) || [],
   }
 }
 

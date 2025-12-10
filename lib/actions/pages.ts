@@ -225,7 +225,22 @@ export async function updatePage(page: PageUpdate): Promise<Page> {
       .neq("id", page.id)
   }
 
-  const updateData: any = {}
+  const updateData: Partial<{
+    title: string
+    slug: string
+    content: string
+    content_type: string
+    template: string | null
+    meta_title: string | null
+    meta_description: string | null
+    meta_keywords: string[] | null
+    featured_image_url: string | null
+    status: string
+    published_at: string | null
+    parent_id: string | null
+    sort_order: number
+    is_homepage: boolean
+  }> = {}
   if (page.title !== undefined) updateData.title = page.title
   if (page.slug !== undefined) updateData.slug = page.slug
   if (page.content !== undefined) updateData.content = page.content

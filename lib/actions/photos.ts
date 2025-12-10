@@ -167,7 +167,18 @@ export async function updatePhoto(photo: PhotoUpdate): Promise<Photo> {
 
   const { id, ...updates } = photo
 
-  const updateData: any = {}
+  const updateData: Partial<{
+    title: string
+    description: string | null
+    image_url: string
+    alt_text: string | null
+    category: string | null
+    location: string | null
+    date_taken: string | null
+    camera_settings: unknown
+    tags: string[] | null
+    featured: boolean
+  }> = {}
   if (updates.title !== undefined) updateData.title = updates.title
   if (updates.description !== undefined) updateData.description = updates.description
   if (updates.imageUrl !== undefined) updateData.image_url = updates.imageUrl

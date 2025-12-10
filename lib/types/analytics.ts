@@ -15,7 +15,7 @@ export interface AnalyticsEvent {
   screenWidth?: number | null
   screenHeight?: number | null
   sessionId?: string | null
-  metadata?: Record<string, any> | null
+  metadata?: Record<string, unknown> | null
 }
 
 export interface AnalyticsSummary {

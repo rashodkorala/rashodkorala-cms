@@ -25,8 +25,7 @@ export function validateSlug(slug: string): boolean {
  */
 export function ensureUniqueSlug(
   slug: string,
-  existingSlugs: string[],
-  excludeId?: string
+  existingSlugs: string[]
 ): string {
   let uniqueSlug = slug
   let counter = 1

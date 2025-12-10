@@ -176,7 +176,21 @@ export async function updateBlog(blog: BlogUpdate): Promise<Blog> {
     throw new Error("Unauthorized")
   }
 
-  const updateData: any = {}
+  const updateData: Partial<{
+    title: string
+    slug: string
+    excerpt: string | null
+    content: string
+    featured_image_url: string | null
+    status: string
+    published_at: string | null
+    author_name: string | null
+    category: string | null
+    tags: string[] | null
+    seo_title: string | null
+    seo_description: string | null
+    featured: boolean
+  }> = {}
   if (blog.title !== undefined) updateData.title = blog.title
   if (blog.slug !== undefined) updateData.slug = blog.slug
   if (blog.excerpt !== undefined) updateData.excerpt = blog.excerpt
