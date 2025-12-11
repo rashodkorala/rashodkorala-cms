@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
 
     // Build prompt based on type
     let prompt = ""
-    let systemPrompt = "You are a professional portfolio content writer. Generate concise, engaging content for project portfolios."
+    const systemPrompt = "You are a professional portfolio content writer. Generate concise, engaging content for project portfolios."
 
     switch (type) {
       case "problem":

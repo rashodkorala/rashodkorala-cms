@@ -18,6 +18,11 @@ const eslintConfig = defineConfig([
       "@next/next/no-page-custom-font": "off",
       "@typescript-eslint/no-unused-vars": "off",
       "@typescript-eslint/no-explicit-any": "off",
+
+
+
+
+      
     },
   },
   // Override default ignores of eslint-config-next.
