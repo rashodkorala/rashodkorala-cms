@@ -1,5 +1,5 @@
-import { CodeBlock } from "@/components/docs/code-block"
-import { Alert, AlertDescription, AlertTitle } from "@/components/docs/alert"
+import { CodeBlock } from "@/components/docs/code-block";
+import { Alert, AlertDescription, AlertTitle } from "@/components/docs/alert";
 
 # Photography Management
 
@@ -17,6 +17,17 @@ The Photography feature allows you to manage your photo collection with:
 - Location and date information
 - Tags for organization
 - Featured photo flag
+
+<Alert variant="info">
+  <AlertTitle>Try the Demo</AlertTitle>
+  <AlertDescription>
+    Check out the{" "}
+    <a href="/demo" className="underline font-medium">
+      live demo
+    </a>{" "}
+    to see the photography management interface in action with sample data.
+  </AlertDescription>
+</Alert>
 
 ## Single Photo Upload
 
@@ -61,7 +72,8 @@ Use AI to automatically generate metadata:
 <Alert variant="info">
   <AlertTitle>AI Analysis</AlertTitle>
   <AlertDescription>
-    AI analysis requires an OpenAI API key. See the [AI Analysis guide](/protected/docs/features/ai-analysis) for setup instructions.
+    AI analysis requires an OpenAI API key. See the [AI Analysis
+    guide](/protected/docs/features/ai-analysis) for setup instructions.
   </AlertDescription>
 </Alert>
 
@@ -79,7 +91,7 @@ Upload multiple photos at once with metadata from a JSON file:
 ### Metadata JSON Format
 
 <CodeBlock language="json">
-{`{
+  {`{
   "photos": [
     {
       "title": "Sunset over Mountains",
@@ -133,4 +145,3 @@ Add multiple tags to photos for flexible organization. Tags allow for cross-cate
 ## Featured Photos
 
 Mark photos as featured to highlight them on your frontend website. Featured photos typically appear in galleries or homepage sections.
-
