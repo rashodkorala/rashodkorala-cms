@@ -9,7 +9,7 @@ export function Alert({ children, variant = "default" }: AlertProps) {
   return (
     <div
       className={cn(
-        "rounded-lg border p-4",
+        "rounded-lg border p-4 mt-6",
         variant === "default" && "bg-muted/50 border-border",
         variant === "warning" && "bg-amber-50 dark:bg-amber-950 border-amber-200 dark:border-amber-800",
         variant === "info" && "bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800",

@@ -62,7 +62,7 @@ const data = {
   navSecondary: [
     {
       title: "Documentation",
-      url: "/protected/docs",
+      url: "/docs",
       icon: IconBook,
     },
     {

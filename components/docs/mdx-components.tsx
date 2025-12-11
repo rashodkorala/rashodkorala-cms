@@ -34,6 +34,21 @@ export function useMDXComponents(components: MDXComponents = {}): MDXComponents 
     pre: ({ children, ...props }) => {
       return <>{children}</>
     },
+    ul: ({ children, ...props }) => (
+      <ul className="my-4 ml-6 list-disc [&>li]:mt-2 [&>li>p]:mt-0" {...props}>
+        {children}
+      </ul>
+    ),
+    ol: ({ children, ...props }) => (
+      <ol className="my-4 ml-6 list-decimal [&>li]:mt-2 [&>li>p]:mt-0" {...props}>
+        {children}
+      </ol>
+    ),
+    li: ({ children, ...props }) => (
+      <li className="pl-2" {...props}>
+        {children}
+      </li>
+    ),
     Alert,
     AlertTitle,
     AlertDescription,

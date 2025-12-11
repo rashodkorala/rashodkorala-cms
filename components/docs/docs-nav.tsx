@@ -11,15 +11,15 @@ const docsSections = [
     items: [
       {
         title: "Overview",
-        href: "/protected/docs",
+        href: "/docs",
       },
       {
         title: "Installation",
-        href: "/protected/docs/installation",
+        href: "/docs/installation",
       },
       {
         title: "Environment Setup",
-        href: "/protected/docs/environment",
+        href: "/docs/environment",
       },
     ],
   },
@@ -28,19 +28,19 @@ const docsSections = [
     items: [
       {
         title: "Projects Table",
-        href: "/protected/docs/database/projects",
+        href: "/docs/database/projects",
       },
       {
         title: "Photos Table",
-        href: "/protected/docs/database/photos",
+        href: "/docs/database/photos",
       },
       {
         title: "Analytics Table",
-        href: "/protected/docs/database/analytics",
+        href: "/docs/database/analytics",
       },
       {
         title: "Migrations",
-        href: "/protected/docs/database/migrations",
+        href: "/docs/database/migrations",
       },
     ],
   },
@@ -49,11 +49,11 @@ const docsSections = [
     items: [
       {
         title: "Photos Bucket",
-        href: "/protected/docs/storage/photos",
+        href: "/docs/storage/photos",
       },
       {
         title: "Projects Bucket",
-        href: "/protected/docs/storage/projects",
+        href: "/docs/storage/projects",
       },
     ],
   },
@@ -62,19 +62,19 @@ const docsSections = [
     items: [
       {
         title: "Projects",
-        href: "/protected/docs/features/projects",
+        href: "/docs/features/projects",
       },
       {
         title: "Photography",
-        href: "/protected/docs/features/photography",
+        href: "/docs/features/photography",
       },
       {
         title: "Analytics",
-        href: "/protected/docs/features/analytics",
+        href: "/docs/features/analytics",
       },
       {
         title: "AI Analysis",
-        href: "/protected/docs/features/ai-analysis",
+        href: "/docs/features/ai-analysis",
       },
     ],
   },
@@ -83,11 +83,11 @@ const docsSections = [
     items: [
       {
         title: "Frontend Tracking",
-        href: "/protected/docs/integration/tracking",
+        href: "/docs/integration/tracking",
       },
       {
         title: "API Reference",
-        href: "/protected/docs/integration/api",
+        href: "/docs/integration/api",
       },
     ],
   },
@@ -97,7 +97,7 @@ export function DocsNav() {
   const pathname = usePathname()
 
   return (
-    <aside className="w-64 border-r bg-muted/40 p-6 overflow-y-auto">
+    <aside className="w-64 border-r bg-muted/40 p-6 sticky top-0 h-[calc(100vh-3.5rem)] overflow-y-auto">
       <div className="mb-6">
         <h2 className="text-lg font-semibold flex items-center gap-2 mb-4">
           <IconBook className="h-5 w-5" />

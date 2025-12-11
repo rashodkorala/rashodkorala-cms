@@ -1,27 +1,53 @@
 "use client"
 
-import { useState } from "react"
+import { useState, Children } from "react"
 import { IconCheck, IconCopy } from "@tabler/icons-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
 interface CodeBlockProps {
-  code: string
+  code?: string
   language?: string
   filename?: string
+  children?: React.ReactNode
 }
 
-export function CodeBlock({ code, language, filename }: CodeBlockProps) {
+export function CodeBlock({ code, language, filename, children }: CodeBlockProps) {
   const [copied, setCopied] = useState(false)
 
+  // Extract code string from children or use code prop
+  const extractCode = (): string => {
+    if (code) return code
+    if (!children) return ''
+
+    // Use React.Children to properly extract text from children
+    const textContent = Children.toArray(children)
+      .map(child => {
+        if (typeof child === 'string') return child
+        if (typeof child === 'number') return String(child)
+        // For React elements, try to extract text content
+        if (child && typeof child === 'object' && 'props' in child) {
+          const props = child.props as { children?: React.ReactNode }
+          return Children.toArray(props?.children || []).join('')
+        }
+        return String(child)
+      })
+      .join('')
+      .trim()
+
+    return textContent
+  }
+
+  const codeContent = extractCode()
+
   const copyToClipboard = () => {
-    navigator.clipboard.writeText(code)
+    navigator.clipboard.writeText(codeContent)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
 
   return (
-    <div className="relative group">
+    <div className="relative group py-4">
       {filename && (
         <div className="px-4 py-2 bg-muted border-b text-sm font-mono text-muted-foreground">
           {filename}
@@ -33,7 +59,7 @@ export function CodeBlock({ code, language, filename }: CodeBlockProps) {
           filename && "rounded-t-none"
         )}>
           <code className={cn("text-[#d4d4d4]", language && `language-${language}`)}>
-            {code}
+            {codeContent}
           </code>
         </pre>
         <Button
