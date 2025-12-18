@@ -58,10 +58,7 @@ const nextConfig: NextConfig = {
 };
 
 const withMDX = createMDX({
-  options: {
-    remarkPlugins: [],
-    rehypePlugins: [],
-  },
+  // MDX options for file-based MDX pages (like docs)
 });
 
 export default withMDX(nextConfig);

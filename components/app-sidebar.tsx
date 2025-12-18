@@ -10,6 +10,7 @@ import {
   IconPhoto,
   IconSettings,
   IconBook,
+  IconBriefcase,
 } from "@tabler/icons-react"
 
 import { NavMain } from "@/components/nav-main"
@@ -37,6 +38,11 @@ const data = {
       title: "Projects",
       url: "/protected/projects",
       icon: IconFolder,
+    },
+    {
+      title: "Case Studies",
+      url: "/protected/case-studies",
+      icon: IconBriefcase,
     },
     {
       title: "Photos",
