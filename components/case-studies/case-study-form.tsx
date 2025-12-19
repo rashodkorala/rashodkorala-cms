@@ -15,12 +15,12 @@ import {
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card } from "@/components/ui/card"
-import type { CaseStudy, CaseStudyFormData, Link as CaseStudyLink, Metric, Result } from "@/lib/types/case-study"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { IconX, IconPlus } from "@tabler/icons-react"
+import type { CaseStudy, CaseStudyFormData, Link } from "@/lib/types/case-study"
 import { createOrUpdateCaseStudy, uploadMedia } from "@/lib/actions/case-studies"
-import { IconPlus, IconTrash, IconUpload, IconDownload } from "@tabler/icons-react"
-import Link from "next/link"
+import { CASE_STUDY_MDX_TEMPLATE } from "@/lib/constants/case-study-template"
 
 interface CaseStudyFormProps {
   caseStudy?: CaseStudy
@@ -70,9 +70,12 @@ export function CaseStudyForm({ caseStudy, mdxContent = "" }: CaseStudyFormProps
 
   const [isLoading, setIsLoading] = useState(false)
   const [coverImageFile, setCoverImageFile] = useState<File | null>(null)
-  const [tagInput, setTagInput] = useState("")
-  const [skillInput, setSkillInput] = useState("")
+  const [galleryImageFiles, setGalleryImageFiles] = useState<File[]>([])
+
+  // Array field helpers
   const [stackInput, setStackInput] = useState("")
+  const [linkLabelInput, setLinkLabelInput] = useState("")
+  const [linkUrlInput, setLinkUrlInput] = useState("")
 
   const handleTitleChange = (title: string) => {
     setFormData({
@@ -95,50 +98,74 @@ export function CaseStudyForm({ caseStudy, mdxContent = "" }: CaseStudyFormProps
     reader.readAsDataURL(file)
   }
 
-  const addTag = () => {
-    if (tagInput.trim() && !formData.tags.includes(tagInput.trim())) {
-      setFormData({ ...formData, tags: [...formData.tags, tagInput.trim()] })
-      setTagInput("")
-    }
+  const handleGalleryImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || [])
+    if (files.length === 0) return
+
+    setGalleryImageFiles([...galleryImageFiles, ...files])
+
+    // Create previews
+    const previews = await Promise.all(
+      files.map(
+        (file) =>
+          new Promise<string>((resolve) => {
+            const reader = new FileReader()
+            reader.onloadend = () => resolve(reader.result as string)
+            reader.readAsDataURL(file)
+          })
+      )
+    )
+
+    setFormData({
+      ...formData,
+      galleryUrls: [...formData.galleryUrls, ...previews],
+    })
   }
 
-  const removeTag = (tag: string) => {
-    setFormData({ ...formData, tags: formData.tags.filter((t) => t !== tag) })
+  const removeGalleryImage = (index: number) => {
+    setFormData({
+      ...formData,
+      galleryUrls: formData.galleryUrls.filter((_, i) => i !== index),
+    })
+    setGalleryImageFiles(galleryImageFiles.filter((_, i) => i !== index))
   }
 
-  const addSkill = () => {
-    if (skillInput.trim() && !formData.skills.includes(skillInput.trim())) {
-      setFormData({ ...formData, skills: [...formData.skills, skillInput.trim()] })
-      setSkillInput("")
-    }
+  const insertTemplate = () => {
+    setFormData({ ...formData, mdxContent: CASE_STUDY_MDX_TEMPLATE })
+    toast.success("Template inserted")
   }
 
-  const removeSkill = (skill: string) => {
-    setFormData({ ...formData, skills: formData.skills.filter((s) => s !== skill) })
-  }
+  // Array field handlers
 
   const addStack = () => {
-    if (stackInput.trim() && !formData.stack.includes(stackInput.trim())) {
-      setFormData({ ...formData, stack: [...formData.stack, stackInput.trim()] })
+    if (stackInput.trim()) {
+      setFormData({
+        ...formData,
+        stack: [...formData.stack, stackInput.trim()],
+      })
       setStackInput("")
     }
   }
 
-  const removeStack = (tech: string) => {
-    setFormData({ ...formData, stack: formData.stack.filter((t) => t !== tech) })
-  }
-
-  const addLink = () => {
+  const removeStack = (index: number) => {
     setFormData({
       ...formData,
-      links: [...formData.links, { label: "", url: "" }],
+      stack: formData.stack.filter((_, i) => i !== index),
     })
   }
 
-  const updateLink = (index: number, field: keyof CaseStudyLink, value: string) => {
-    const newLinks = [...formData.links]
-    newLinks[index] = { ...newLinks[index], [field]: value }
-    setFormData({ ...formData, links: newLinks })
+  const addLink = () => {
+    if (linkLabelInput.trim() && linkUrlInput.trim()) {
+      setFormData({
+        ...formData,
+        links: [
+          ...formData.links,
+          { label: linkLabelInput.trim(), url: linkUrlInput.trim() },
+        ],
+      })
+      setLinkLabelInput("")
+      setLinkUrlInput("")
+    }
   }
 
   const removeLink = (index: number) => {
@@ -146,78 +173,6 @@ export function CaseStudyForm({ caseStudy, mdxContent = "" }: CaseStudyFormProps
       ...formData,
       links: formData.links.filter((_, i) => i !== index),
     })
-  }
-
-  const addResult = () => {
-    setFormData({
-      ...formData,
-      results: [...formData.results, { text: "" }],
-    })
-  }
-
-  const updateResult = (index: number, text: string) => {
-    const newResults = [...formData.results]
-    newResults[index] = { text }
-    setFormData({ ...formData, results: newResults })
-  }
-
-  const removeResult = (index: number) => {
-    setFormData({
-      ...formData,
-      results: formData.results.filter((_, i) => i !== index),
-    })
-  }
-
-  const addMetric = () => {
-    setFormData({
-      ...formData,
-      metrics: [...formData.metrics, { label: "", value: "" }],
-    })
-  }
-
-  const updateMetric = (index: number, field: keyof Metric, value: string) => {
-    const newMetrics = [...formData.metrics]
-    newMetrics[index] = { ...newMetrics[index], [field]: value }
-    setFormData({ ...formData, metrics: newMetrics })
-  }
-
-  const removeMetric = (index: number) => {
-    setFormData({
-      ...formData,
-      metrics: formData.metrics.filter((_, i) => i !== index),
-    })
-  }
-
-  const insertTemplate = () => {
-    const template = `# Introduction
-
-Brief overview of the project and what it accomplished.
-
-## Background
-
-Context about why this project was needed.
-
-## Problem Statement
-
-What challenge were you solving?
-
-## Methodology
-
-How did you approach the solution?
-
-## Solution
-
-What did you build or implement?
-
-## Results
-
-What were the outcomes?
-
-## Key Takeaways
-
-What did you learn?`
-
-    setFormData({ ...formData, mdxContent: template })
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -229,7 +184,7 @@ What did you learn?`
     }
 
     if (!formData.mdxContent.trim()) {
-      toast.error("MDX content is required")
+      toast.error("Please add MDX content")
       return
     }
 
@@ -242,9 +197,17 @@ What did you learn?`
         coverUrl = await uploadMedia(coverImageFile)
       }
 
+      // Upload gallery images
+      let galleryUrls = formData.galleryUrls.filter((url) => url.startsWith("http"))
+      for (const file of galleryImageFiles) {
+        const url = await uploadMedia(file)
+        galleryUrls.push(url)
+      }
+
       const dataToSubmit = {
         ...formData,
         coverUrl,
+        galleryUrls,
       }
 
       await createOrUpdateCaseStudy(dataToSubmit, caseStudy?.id)
@@ -267,13 +230,12 @@ What did you learn?`
           <TabsTrigger value="content">Content</TabsTrigger>
           <TabsTrigger value="metadata">Metadata</TabsTrigger>
           <TabsTrigger value="context">Context</TabsTrigger>
-          <TabsTrigger value="proof">Links & Proof</TabsTrigger>
+          <TabsTrigger value="proof">Links</TabsTrigger>
         </TabsList>
 
         {/* Content Tab */}
-        <TabsContent value="content" className="space-y-4">
-          <Card className="p-6 space-y-4">
-            {/* Title */}
+        <TabsContent value="content" className="space-y-6">
+          <Card className="p-6 space-y-6">
             <div className="space-y-2">
               <Label htmlFor="title">Title *</Label>
               <Input
@@ -285,7 +247,6 @@ What did you learn?`
               />
             </div>
 
-            {/* Slug */}
             <div className="space-y-2">
               <Label htmlFor="slug">Slug *</Label>
               <Input
@@ -300,7 +261,6 @@ What did you learn?`
               </p>
             </div>
 
-            {/* Summary */}
             <div className="space-y-2">
               <Label htmlFor="summary">Summary</Label>
               <Textarea
@@ -312,81 +272,87 @@ What did you learn?`
               />
             </div>
 
-            {/* MDX Content */}
             <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="mdxContent">MDX Content *</Label>
+              <Label htmlFor="mdxContent">MDX Content *</Label>
+              <div className="space-y-2">
                 <div className="flex gap-2">
-                  <Button type="button" variant="outline" size="sm" onClick={insertTemplate}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={insertTemplate}
+                  >
                     Insert Template
                   </Button>
-                  <Link href="/api/case-studies/download-template" target="_blank">
-                    <Button type="button" variant="outline" size="sm">
-                      <IconDownload className="h-4 w-4 mr-2" />
-                      Download Template
-                    </Button>
-                  </Link>
                 </div>
+                <Textarea
+                  id="mdxContent"
+                  value={formData.mdxContent}
+                  onChange={(e) => setFormData({ ...formData, mdxContent: e.target.value })}
+                  placeholder="Paste your MDX content here with charts and all..."
+                  rows={20}
+                  className="font-mono text-sm"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Paste your markdown/MDX content here. You can use charts from recharts (LineChart, BarChart, etc.)
+                </p>
               </div>
-              <Textarea
-                id="mdxContent"
-                value={formData.mdxContent}
-                onChange={(e) => setFormData({ ...formData, mdxContent: e.target.value })}
-                placeholder="Write your case study content in MDX format..."
-                rows={20}
-                className="font-mono text-sm"
-                required
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="type">Case Study Type</Label>
+                <Select
+                  value={formData.type}
+                  onValueChange={(value: "problem-solving" | "descriptive") =>
+                    setFormData({ ...formData, type: value })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="problem-solving">Problem-Solving</SelectItem>
+                    <SelectItem value="descriptive">Descriptive</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="status">Status</Label>
+                <Select
+                  value={formData.status}
+                  onValueChange={(value: "draft" | "published" | "archived") =>
+                    setFormData({ ...formData, status: value })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="draft">Draft</SelectItem>
+                    <SelectItem value="published">Published</SelectItem>
+                    <SelectItem value="archived">Archived</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="publishedAt">Published Date</Label>
+              <Input
+                id="publishedAt"
+                type="datetime-local"
+                value={formData.publishedAt ? new Date(formData.publishedAt).toISOString().slice(0, 16) : ""}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    publishedAt: e.target.value ? new Date(e.target.value).toISOString() : null,
+                  })
+                }
               />
-              <p className="text-xs text-muted-foreground">
-                Write your narrative here: Introduction, Problem, Solution, Results, etc.
-              </p>
-            </div>
-          </Card>
-        </TabsContent>
-
-        {/* Metadata Tab */}
-        <TabsContent value="metadata" className="space-y-4">
-          <Card className="p-6 space-y-4">
-            {/* Type */}
-            <div className="space-y-2">
-              <Label htmlFor="type">Case Study Type</Label>
-              <Select
-                value={formData.type}
-                onValueChange={(value: "problem-solving" | "descriptive") =>
-                  setFormData({ ...formData, type: value })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="problem-solving">Problem-Solving</SelectItem>
-                  <SelectItem value="descriptive">Descriptive</SelectItem>
-                </SelectContent>
-              </Select>
             </div>
 
-            {/* Status */}
-            <div className="space-y-2">
-              <Label htmlFor="status">Status</Label>
-              <Select
-                value={formData.status}
-                onValueChange={(value: "draft" | "published" | "archived") =>
-                  setFormData({ ...formData, status: value })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="draft">Draft</SelectItem>
-                  <SelectItem value="published">Published</SelectItem>
-                  <SelectItem value="archived">Archived</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Featured */}
             <div className="flex items-center space-x-2">
               <Checkbox
                 id="featured"
@@ -399,8 +365,12 @@ What did you learn?`
                 Featured case study
               </Label>
             </div>
+          </Card>
+        </TabsContent>
 
-            {/* Cover Image */}
+        {/* Metadata Tab */}
+        <TabsContent value="metadata" className="space-y-6">
+          <Card className="p-6 space-y-6">
             <div className="space-y-2">
               <Label htmlFor="coverImage">Cover Image</Label>
               <Input
@@ -420,192 +390,129 @@ What did you learn?`
               )}
             </div>
 
-            {/* Tags */}
             <div className="space-y-2">
-              <Label>Tags</Label>
-              <div className="flex gap-2">
-                <Input
-                  value={tagInput}
-                  onChange={(e) => setTagInput(e.target.value)}
-                  onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), addTag())}
-                  placeholder="Add a tag"
-                />
-                <Button type="button" onClick={addTag} size="sm">
-                  <IconPlus className="h-4 w-4" />
-                </Button>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {formData.tags.map((tag) => (
-                  <div
-                    key={tag}
-                    className="flex items-center gap-1 bg-secondary text-secondary-foreground px-3 py-1 rounded-full text-sm"
-                  >
-                    <span>{tag}</span>
-                    <button
-                      type="button"
-                      onClick={() => removeTag(tag)}
-                      className="hover:text-destructive"
-                    >
-                      <IconTrash className="h-3 w-3" />
-                    </button>
-                  </div>
-                ))}
-              </div>
+              <Label htmlFor="galleryImages">Gallery Images</Label>
+              <Input
+                id="galleryImages"
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleGalleryImageUpload}
+              />
+              {formData.galleryUrls.length > 0 && (
+                <div className="grid grid-cols-3 gap-4 mt-4">
+                  {formData.galleryUrls.map((url, index) => (
+                    <div key={index} className="relative">
+                      <img
+                        src={url}
+                        alt={`Gallery ${index + 1}`}
+                        className="w-full h-32 object-cover rounded-lg"
+                      />
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="icon"
+                        className="absolute top-2 right-2 h-6 w-6"
+                        onClick={() => removeGalleryImage(index)}
+                      >
+                        <IconX className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
-            {/* Skills */}
             <div className="space-y-2">
-              <Label>Skills</Label>
-              <div className="flex gap-2">
-                <Input
-                  value={skillInput}
-                  onChange={(e) => setSkillInput(e.target.value)}
-                  onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), addSkill())}
-                  placeholder="Add a skill"
-                />
-                <Button type="button" onClick={addSkill} size="sm">
-                  <IconPlus className="h-4 w-4" />
-                </Button>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {formData.skills.map((skill) => (
-                  <div
-                    key={skill}
-                    className="flex items-center gap-1 bg-secondary text-secondary-foreground px-3 py-1 rounded-full text-sm"
-                  >
-                    <span>{skill}</span>
-                    <button
-                      type="button"
-                      onClick={() => removeSkill(skill)}
-                      className="hover:text-destructive"
-                    >
-                      <IconTrash className="h-3 w-3" />
-                    </button>
-                  </div>
-                ))}
-              </div>
+              <Label htmlFor="seoTitle">SEO Title</Label>
+              <Input
+                id="seoTitle"
+                value={formData.seoTitle}
+                onChange={(e) => setFormData({ ...formData, seoTitle: e.target.value })}
+                placeholder="SEO optimized title"
+              />
             </div>
 
-            {/* Tech Stack */}
             <div className="space-y-2">
-              <Label>Tech Stack</Label>
-              <div className="flex gap-2">
-                <Input
-                  value={stackInput}
-                  onChange={(e) => setStackInput(e.target.value)}
-                  onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), addStack())}
-                  placeholder="Add a technology"
-                />
-                <Button type="button" onClick={addStack} size="sm">
-                  <IconPlus className="h-4 w-4" />
-                </Button>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {formData.stack.map((tech) => (
-                  <div
-                    key={tech}
-                    className="flex items-center gap-1 bg-secondary text-secondary-foreground px-3 py-1 rounded-full text-sm"
-                  >
-                    <span>{tech}</span>
-                    <button
-                      type="button"
-                      onClick={() => removeStack(tech)}
-                      className="hover:text-destructive"
-                    >
-                      <IconTrash className="h-3 w-3" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* SEO */}
-            <div className="space-y-4 pt-4 border-t">
-              <h3 className="font-semibold">SEO</h3>
-              <div className="space-y-2">
-                <Label htmlFor="seoTitle">SEO Title</Label>
-                <Input
-                  id="seoTitle"
-                  value={formData.seoTitle}
-                  onChange={(e) => setFormData({ ...formData, seoTitle: e.target.value })}
-                  placeholder="Leave blank to use title"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="seoDescription">SEO Description</Label>
-                <Textarea
-                  id="seoDescription"
-                  value={formData.seoDescription}
-                  onChange={(e) => setFormData({ ...formData, seoDescription: e.target.value })}
-                  placeholder="Leave blank to use summary"
-                  rows={3}
-                />
-              </div>
+              <Label htmlFor="seoDescription">SEO Description</Label>
+              <Textarea
+                id="seoDescription"
+                value={formData.seoDescription}
+                onChange={(e) => setFormData({ ...formData, seoDescription: e.target.value })}
+                placeholder="SEO meta description"
+                rows={3}
+              />
             </div>
           </Card>
         </TabsContent>
 
         {/* Context Tab */}
-        <TabsContent value="context" className="space-y-4">
-          <Card className="p-6 space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="subjectName">Subject Name</Label>
-              <Input
-                id="subjectName"
-                value={formData.subjectName}
-                onChange={(e) => setFormData({ ...formData, subjectName: e.target.value })}
-                placeholder="Project, product, or company name"
-              />
+        <TabsContent value="context" className="space-y-6">
+          <Card className="p-6 space-y-6">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="subjectName">Subject Name</Label>
+                <Input
+                  id="subjectName"
+                  value={formData.subjectName}
+                  onChange={(e) => setFormData({ ...formData, subjectName: e.target.value })}
+                  placeholder="Project or company name"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="subjectType">Subject Type</Label>
+                <Input
+                  id="subjectType"
+                  value={formData.subjectType}
+                  onChange={(e) => setFormData({ ...formData, subjectType: e.target.value })}
+                  placeholder="e.g., Web App, Mobile App"
+                />
+              </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="subjectType">Subject Type</Label>
-              <Input
-                id="subjectType"
-                value={formData.subjectType}
-                onChange={(e) => setFormData({ ...formData, subjectType: e.target.value })}
-                placeholder="e.g., Web App, Mobile App, API"
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="industry">Industry</Label>
+                <Input
+                  id="industry"
+                  value={formData.industry}
+                  onChange={(e) => setFormData({ ...formData, industry: e.target.value })}
+                  placeholder="e.g., B2B SaaS, E-commerce"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="audience">Audience</Label>
+                <Input
+                  id="audience"
+                  value={formData.audience}
+                  onChange={(e) => setFormData({ ...formData, audience: e.target.value })}
+                  placeholder="Target audience"
+                />
+              </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="industry">Industry</Label>
-              <Input
-                id="industry"
-                value={formData.industry}
-                onChange={(e) => setFormData({ ...formData, industry: e.target.value })}
-                placeholder="e.g., E-commerce, Healthcare, Education"
-              />
-            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="role">Your Role</Label>
+                <Input
+                  id="role"
+                  value={formData.role}
+                  onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                  placeholder="e.g., Lead Developer, Product Designer"
+                />
+              </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="audience">Target Audience</Label>
-              <Input
-                id="audience"
-                value={formData.audience}
-                onChange={(e) => setFormData({ ...formData, audience: e.target.value })}
-                placeholder="Who was this for?"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="role">Your Role</Label>
-              <Input
-                id="role"
-                value={formData.role}
-                onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                placeholder="e.g., Lead Developer, Designer, Project Manager"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="teamSize">Team Size</Label>
-              <Input
-                id="teamSize"
-                value={formData.teamSize}
-                onChange={(e) => setFormData({ ...formData, teamSize: e.target.value })}
-                placeholder="e.g., Solo, 2-5, 6-10"
-              />
+              <div className="space-y-2">
+                <Label htmlFor="teamSize">Team Size</Label>
+                <Input
+                  id="teamSize"
+                  value={formData.teamSize}
+                  onChange={(e) => setFormData({ ...formData, teamSize: e.target.value })}
+                  placeholder="e.g., 5 people, Solo project"
+                />
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -614,107 +521,92 @@ What did you learn?`
                 id="timeline"
                 value={formData.timeline}
                 onChange={(e) => setFormData({ ...formData, timeline: e.target.value })}
-                placeholder="e.g., 3 months, 6 weeks"
+                placeholder="e.g., 3 months (Q1 2024)"
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="stack">Tech Stack</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="stack"
+                  value={stackInput}
+                  onChange={(e) => setStackInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault()
+                      addStack()
+                    }
+                  }}
+                  placeholder="Add a technology and press Enter"
+                />
+                <Button type="button" onClick={addStack} size="icon">
+                  <IconPlus className="h-4 w-4" />
+                </Button>
+              </div>
+              {formData.stack.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {formData.stack.map((tech, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center gap-1 bg-secondary px-2 py-1 rounded-md text-sm"
+                    >
+                      {tech}
+                      <button
+                        type="button"
+                        onClick={() => removeStack(index)}
+                        className="hover:text-destructive"
+                      >
+                        <IconX className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </Card>
         </TabsContent>
 
-        {/* Links & Proof Tab */}
-        <TabsContent value="proof" className="space-y-4">
+        {/* Links Tab */}
+        <TabsContent value="proof" className="space-y-6">
           <Card className="p-6 space-y-6">
-            {/* Links */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <Label>Links</Label>
-                <Button type="button" onClick={addLink} size="sm" variant="outline">
-                  <IconPlus className="h-4 w-4 mr-2" />
-                  Add Link
+            <div>
+              <Label>Links</Label>
+              <div className="flex gap-2 mt-2">
+                <Input
+                  value={linkLabelInput}
+                  onChange={(e) => setLinkLabelInput(e.target.value)}
+                  placeholder="Link label"
+                />
+                <Input
+                  value={linkUrlInput}
+                  onChange={(e) => setLinkUrlInput(e.target.value)}
+                  placeholder="https://example.com"
+                />
+                <Button type="button" onClick={addLink} size="icon">
+                  <IconPlus className="h-4 w-4" />
                 </Button>
               </div>
-              {formData.links.map((link, index) => (
-                <div key={index} className="flex gap-2">
-                  <Input
-                    value={link.label}
-                    onChange={(e) => updateLink(index, "label", e.target.value)}
-                    placeholder="Label (e.g., Demo, GitHub)"
-                  />
-                  <Input
-                    value={link.url}
-                    onChange={(e) => updateLink(index, "url", e.target.value)}
-                    placeholder="https://..."
-                  />
-                  <Button
-                    type="button"
-                    onClick={() => removeLink(index)}
-                    size="sm"
-                    variant="ghost"
-                  >
-                    <IconTrash className="h-4 w-4" />
-                  </Button>
+              {formData.links.length > 0 && (
+                <div className="space-y-2 mt-4">
+                  {formData.links.map((link, index) => (
+                    <div key={index} className="flex items-center justify-between p-2 bg-secondary rounded">
+                      <div>
+                        <span className="font-medium">{link.label}</span>
+                        <span className="text-sm text-muted-foreground ml-2">{link.url}</span>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removeLink(index)}
+                      >
+                        <IconX className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-
-            {/* Results */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <Label>Results</Label>
-                <Button type="button" onClick={addResult} size="sm" variant="outline">
-                  <IconPlus className="h-4 w-4 mr-2" />
-                  Add Result
-                </Button>
-              </div>
-              {formData.results.map((result, index) => (
-                <div key={index} className="flex gap-2">
-                  <Input
-                    value={result.text}
-                    onChange={(e) => updateResult(index, e.target.value)}
-                    placeholder="e.g., Increased conversions by 40%"
-                  />
-                  <Button
-                    type="button"
-                    onClick={() => removeResult(index)}
-                    size="sm"
-                    variant="ghost"
-                  >
-                    <IconTrash className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
-            </div>
-
-            {/* Metrics */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <Label>Key Metrics</Label>
-                <Button type="button" onClick={addMetric} size="sm" variant="outline">
-                  <IconPlus className="h-4 w-4 mr-2" />
-                  Add Metric
-                </Button>
-              </div>
-              {formData.metrics.map((metric, index) => (
-                <div key={index} className="flex gap-2">
-                  <Input
-                    value={metric.label}
-                    onChange={(e) => updateMetric(index, "label", e.target.value)}
-                    placeholder="Label (e.g., Users, Downloads)"
-                  />
-                  <Input
-                    value={metric.value}
-                    onChange={(e) => updateMetric(index, "value", e.target.value)}
-                    placeholder="Value (e.g., 10k+, 95%)"
-                  />
-                  <Button
-                    type="button"
-                    onClick={() => removeMetric(index)}
-                    size="sm"
-                    variant="ghost"
-                  >
-                    <IconTrash className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
+              )}
             </div>
           </Card>
         </TabsContent>
@@ -737,4 +629,6 @@ What did you learn?`
     </form>
   )
 }
+
+
 

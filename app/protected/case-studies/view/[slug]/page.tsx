@@ -1,14 +1,18 @@
 import { getCaseStudyBySlugAdmin, fetchMdxFromStorage } from "@/lib/actions/case-studies"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { createClient } from "@/lib/supabase/server"
 import { IconArrowLeft, IconEdit } from "@tabler/icons-react"
 import Link from "next/link"
-import { notFound } from "next/navigation"
+import { notFound, redirect } from "next/navigation"
 import { MDXRemote } from "next-mdx-remote/rsc"
 import remarkGfm from "remark-gfm"
-import rehypeHighlight from "rehype-highlight"
+import * as ChartComponents from "@/components/mdx/chart-components"
 
 const components = {
+  // Chart components
+  ...ChartComponents,
+  // HTML/Markdown components
   h1: (props: any) => <h1 className="text-4xl font-bold mt-8 mb-4" {...props} />,
   h2: (props: any) => <h2 className="text-3xl font-semibold mt-6 mb-3" {...props} />,
   h3: (props: any) => <h3 className="text-2xl font-semibold mt-4 mb-2" {...props} />,
@@ -22,8 +26,10 @@ const components = {
   code: (props: any) => (
     <code className="bg-muted px-1.5 py-0.5 rounded text-sm font-mono" {...props} />
   ),
-  pre: (props: any) => (
-    <pre className="bg-muted p-4 rounded-lg overflow-x-auto mb-4" {...props} />
+  pre: ({ children, ...props }: any) => (
+    <pre className="bg-muted p-4 rounded-lg overflow-x-auto mb-4 text-sm" {...props}>
+      {children}
+    </pre>
   ),
   a: (props: any) => (
     <a className="text-primary hover:underline" target="_blank" rel="noopener noreferrer" {...props} />
@@ -32,6 +38,16 @@ const components = {
     <img className="rounded-lg my-4 max-w-full h-auto" {...props} />
   ),
   hr: (props: any) => <hr className="my-8 border-border" {...props} />,
+  table: (props: any) => (
+    <div className="overflow-x-auto mb-4">
+      <table className="min-w-full divide-y divide-border" {...props} />
+    </div>
+  ),
+  thead: (props: any) => <thead className="bg-muted" {...props} />,
+  tbody: (props: any) => <tbody className="divide-y divide-border" {...props} />,
+  tr: (props: any) => <tr {...props} />,
+  th: (props: any) => <th className="px-4 py-2 text-left text-sm font-semibold" {...props} />,
+  td: (props: any) => <td className="px-4 py-2 text-sm" {...props} />,
 }
 
 export default async function ViewCaseStudyPage({
@@ -39,6 +55,16 @@ export default async function ViewCaseStudyPage({
 }: {
   params: Promise<{ slug: string }>
 }) {
+  // Check authentication first
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    redirect("/auth/login")
+  }
+
   const { slug } = await params
   const caseStudy = await getCaseStudyBySlugAdmin(slug)
 
@@ -47,7 +73,14 @@ export default async function ViewCaseStudyPage({
   }
 
   // Fetch MDX content from storage
-  const mdxContent = await fetchMdxFromStorage(caseStudy.mdxPath)
+  let mdxContent = ""
+  let mdxError = null
+
+  try {
+    mdxContent = await fetchMdxFromStorage(caseStudy.mdxPath)
+  } catch (error) {
+    mdxError = error instanceof Error ? error.message : "Failed to load MDX content"
+  }
 
   return (
     <div className="space-y-6 px-4 max-w-4xl mx-auto">
@@ -240,16 +273,27 @@ export default async function ViewCaseStudyPage({
 
       {/* MDX Content */}
       <div className="prose prose-lg dark:prose-invert max-w-none py-8">
-        <MDXRemote
-          source={mdxContent}
-          components={components}
-          options={{
-            mdxOptions: {
-              remarkPlugins: [remarkGfm],
-              rehypePlugins: [rehypeHighlight],
-            },
-          }}
-        />
+        {mdxError ? (
+          <div className="bg-destructive/10 border border-destructive text-destructive p-4 rounded-lg">
+            <h3 className="font-semibold mb-2">Error Loading Content</h3>
+            <p>{mdxError}</p>
+            <p className="text-sm mt-2">Please edit the case study and fix any syntax errors in the MDX content.</p>
+          </div>
+        ) : mdxContent ? (
+          <MDXRemote
+            source={mdxContent}
+            components={components}
+            options={{
+              mdxOptions: {
+                remarkPlugins: [remarkGfm],
+              },
+            }}
+          />
+        ) : (
+          <div className="bg-muted p-4 rounded-lg">
+            <p className="text-muted-foreground">No content available</p>
+          </div>
+        )}
       </div>
 
       {/* Footer */}
@@ -261,3 +305,4 @@ export default async function ViewCaseStudyPage({
     </div>
   )
 }
+

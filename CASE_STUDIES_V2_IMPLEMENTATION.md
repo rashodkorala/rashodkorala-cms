@@ -48,13 +48,6 @@ This implementation stores MDX content in Supabase Storage and metadata in the d
 2. **case-studies-media** - Stores images
    - Path format: `{user_id}/{timestamp}-{random}.{ext}`
 
-## Admin Routes
-
-```
-/admin/case-studies          → List all case studies
-/admin/case-studies/new      → Create new
-/admin/case-studies/[slug]   → Edit existing
-```
 
 ## Workflow
 
@@ -203,4 +196,5 @@ Call to action (optional)
 - RLS policies enforce user ownership
 - Storage policies require authentication for write
 - Public can only read published case studies
+
 

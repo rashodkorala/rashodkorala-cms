@@ -1,7 +1,9 @@
 import { Button } from "@/components/ui/button"
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { getCaseStudies } from "@/lib/actions/case-studies"
+import { createClient } from "@/lib/supabase/server"
 import Link from "next/link"
+import { redirect } from "next/navigation"
 import { IconPlus, IconBook, IconDownload } from "@tabler/icons-react"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -15,6 +17,16 @@ import {
 import { CaseStudyActions } from "@/components/case-studies/case-study-actions"
 
 export default async function ProtectedCaseStudiesPage() {
+  // Check authentication first
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    redirect("/auth/login")
+  }
+
   const caseStudies = await getCaseStudies()
 
   const stats = {

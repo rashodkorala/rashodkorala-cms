@@ -1,15 +1,26 @@
 import { getCaseStudyBySlugAdmin, fetchMdxFromStorage } from "@/lib/actions/case-studies"
 import { CaseStudyForm } from "@/components/case-studies/case-study-form"
 import { Button } from "@/components/ui/button"
+import { createClient } from "@/lib/supabase/server"
 import { IconArrowLeft } from "@tabler/icons-react"
 import Link from "next/link"
-import { notFound } from "next/navigation"
+import { notFound, redirect } from "next/navigation"
 
 export default async function EditCaseStudyPage({
   params,
 }: {
   params: Promise<{ slug: string }>
 }) {
+  // Check authentication first
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    redirect("/auth/login")
+  }
+
   const { slug } = await params
   const caseStudy = await getCaseStudyBySlugAdmin(slug)
 
@@ -42,4 +53,6 @@ export default async function EditCaseStudyPage({
     </div>
   )
 }
+
+
 

@@ -17,3 +17,5 @@ GRANT EXECUTE ON FUNCTION increment_case_study_views(text) TO authenticated;
 -- Grant execute permission to anonymous users (for public viewing)
 GRANT EXECUTE ON FUNCTION increment_case_study_views(text) TO anon;
 
+
+

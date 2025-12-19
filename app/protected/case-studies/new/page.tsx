@@ -1,9 +1,20 @@
 import { CaseStudyForm } from "@/components/case-studies/case-study-form"
 import { Button } from "@/components/ui/button"
+import { createClient } from "@/lib/supabase/server"
 import { IconArrowLeft } from "@tabler/icons-react"
 import Link from "next/link"
+import { redirect } from "next/navigation"
 
-export default function NewCaseStudyPage() {
+export default async function NewCaseStudyPage() {
+  // Check authentication first
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    redirect("/auth/login")
+  }
   return (
     <div className="space-y-6 px-4">
       <div className="flex items-center gap-4">
@@ -26,4 +37,6 @@ export default function NewCaseStudyPage() {
     </div>
   )
 }
+
+
 
