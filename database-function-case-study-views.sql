@@ -19,3 +19,5 @@ GRANT EXECUTE ON FUNCTION increment_case_study_views(text) TO anon;
 
 
 
+
+

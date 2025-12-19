@@ -1,308 +1,367 @@
-import { getCaseStudyBySlugAdmin, fetchMdxFromStorage } from "@/lib/actions/case-studies"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { createClient } from "@/lib/supabase/server"
-import { IconArrowLeft, IconEdit } from "@tabler/icons-react"
+"use client"
+
+import { motion } from "framer-motion"
+import { IconArrowLeft, IconExternalLink } from "@tabler/icons-react"
 import Link from "next/link"
-import { notFound, redirect } from "next/navigation"
-import { MDXRemote } from "next-mdx-remote/rsc"
+import { useParams } from "next/navigation"
+import { useEffect, useState } from "react"
+import { MDXRemote, MDXRemoteSerializeResult } from "next-mdx-remote"
+import { serialize } from "next-mdx-remote/serialize"
 import remarkGfm from "remark-gfm"
+import { getCaseStudyBySlugAdmin, fetchMdxFromStorage } from "@/lib/actions/case-studies"
+import type { CaseStudy } from "@/lib/types/case-study"
 import * as ChartComponents from "@/components/mdx/chart-components"
 
-const components = {
-  // Chart components
-  ...ChartComponents,
-  // HTML/Markdown components
-  h1: (props: any) => <h1 className="text-4xl font-bold mt-8 mb-4" {...props} />,
-  h2: (props: any) => <h2 className="text-3xl font-semibold mt-6 mb-3" {...props} />,
-  h3: (props: any) => <h3 className="text-2xl font-semibold mt-4 mb-2" {...props} />,
-  p: (props: any) => <p className="mb-4 leading-relaxed" {...props} />,
-  ul: (props: any) => <ul className="list-disc list-inside mb-4 space-y-2" {...props} />,
-  ol: (props: any) => <ol className="list-decimal list-inside mb-4 space-y-2" {...props} />,
-  li: (props: any) => <li className="ml-4" {...props} />,
-  blockquote: (props: any) => (
-    <blockquote className="border-l-4 border-primary pl-4 italic my-4" {...props} />
-  ),
-  code: (props: any) => (
-    <code className="bg-muted px-1.5 py-0.5 rounded text-sm font-mono" {...props} />
-  ),
-  pre: ({ children, ...props }: any) => (
-    <pre className="bg-muted p-4 rounded-lg overflow-x-auto mb-4 text-sm" {...props}>
-      {children}
-    </pre>
-  ),
-  a: (props: any) => (
-    <a className="text-primary hover:underline" target="_blank" rel="noopener noreferrer" {...props} />
-  ),
-  img: (props: any) => (
-    <img className="rounded-lg my-4 max-w-full h-auto" {...props} />
-  ),
-  hr: (props: any) => <hr className="my-8 border-border" {...props} />,
-  table: (props: any) => (
-    <div className="overflow-x-auto mb-4">
-      <table className="min-w-full divide-y divide-border" {...props} />
-    </div>
-  ),
-  thead: (props: any) => <thead className="bg-muted" {...props} />,
-  tbody: (props: any) => <tbody className="divide-y divide-border" {...props} />,
-  tr: (props: any) => <tr {...props} />,
-  th: (props: any) => <th className="px-4 py-2 text-left text-sm font-semibold" {...props} />,
-  td: (props: any) => <td className="px-4 py-2 text-sm" {...props} />,
-}
+export default function CaseStudyDetail() {
+  const params = useParams()
+  const slug = params?.slug as string
+  const [caseStudy, setCaseStudy] = useState<CaseStudy | null>(null)
+  const [mdxSource, setMdxSource] = useState<MDXRemoteSerializeResult | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [mdxError, setMdxError] = useState<string | null>(null)
 
-export default async function ViewCaseStudyPage({
-  params,
-}: {
-  params: Promise<{ slug: string }>
-}) {
-  // Check authentication first
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  useEffect(() => {
+    async function fetchCaseStudy() {
+      setIsLoading(true)
+      try {
+        const data = await getCaseStudyBySlugAdmin(slug)
 
-  if (!user) {
-    redirect("/auth/login")
+        if (data) {
+          setCaseStudy(data)
+
+          // Fetch and serialize MDX content from storage
+          if (data.mdxPath) {
+            try {
+              const mdxContent = await fetchMdxFromStorage(data.mdxPath)
+              const mdx = await serialize(mdxContent, {
+                mdxOptions: {
+                  remarkPlugins: [remarkGfm],
+                  format: "mdx",
+                },
+                parseFrontmatter: false,
+              })
+              setMdxSource(mdx)
+              setMdxError(null)
+            } catch (error: any) {
+              console.error("Error serializing MDX:", error)
+              let errorMessage = "Failed to parse MDX content. "
+              if (error.position) {
+                const line = error.position.start?.line
+                const column = error.position.start?.column
+                if (line) {
+                  errorMessage += `Error at line ${line}, column ${column || "unknown"}. `
+                }
+              }
+              errorMessage += "Check for unclosed curly braces, invalid JSX, or syntax errors."
+              setMdxError(errorMessage)
+              setMdxSource(null)
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching case study:", error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    if (slug) {
+      fetchCaseStudy()
+    }
+  }, [slug])
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-white dark:bg-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black mx-auto mb-4"></div>
+          <p className="text-black/50">Loading case study...</p>
+        </div>
+      </div>
+    )
   }
-
-  const { slug } = await params
-  const caseStudy = await getCaseStudyBySlugAdmin(slug)
 
   if (!caseStudy) {
-    notFound()
+    return (
+      <div className="min-h-screen bg-white dark:bg-white flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-black/50 mb-4">Case study not found</p>
+          <Link
+            href="/protected/case-studies"
+            className="inline-flex items-center gap-2 text-sm text-black/50 hover:text-black transition-colors"
+          >
+            <IconArrowLeft className="w-4 h-4" strokeWidth={1.5} />
+            Back to case studies
+          </Link>
+        </div>
+      </div>
+    )
   }
 
-  // Fetch MDX content from storage
-  let mdxContent = ""
-  let mdxError = null
-
-  try {
-    mdxContent = await fetchMdxFromStorage(caseStudy.mdxPath)
-  } catch (error) {
-    mdxError = error instanceof Error ? error.message : "Failed to load MDX content"
-  }
+  const publishYear = caseStudy.publishedAt
+    ? new Date(caseStudy.publishedAt).getFullYear().toString()
+    : new Date(caseStudy.createdAt).getFullYear().toString()
 
   return (
-    <div className="space-y-6 px-4 max-w-4xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <Link href="/protected/case-studies">
-          <Button variant="ghost" size="sm">
-            <IconArrowLeft className="h-4 w-4 mr-2" />
-            Back to Case Studies
-          </Button>
-        </Link>
-        <Link href={`/protected/case-studies/${slug}`}>
-          <Button size="sm">
-            <IconEdit className="h-4 w-4 mr-2" />
-            Edit
-          </Button>
-        </Link>
-      </div>
-
-      {/* Case Study Header */}
-      <div className="space-y-4">
-        <div className="flex items-center gap-2">
-          <Badge variant={caseStudy.status === "published" ? "default" : "secondary"}>
-            {caseStudy.status}
-          </Badge>
-          <Badge variant="outline">
-            {caseStudy.type === "problem-solving" ? "Problem-Solving" : "Descriptive"}
-          </Badge>
-          {caseStudy.featured && <Badge variant="default">⭐ Featured</Badge>}
+    <div className="min-h-screen bg-white dark:bg-white text-black">
+      {/* Navigation */}
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+        className="px-6 py-8"
+      >
+        <div className="max-w-6xl mx-auto">
+          <Link
+            href="/protected/case-studies"
+            className="inline-flex items-center gap-2 text-black/50 hover:text-black transition-colors group"
+          >
+            <IconArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" strokeWidth={1.5} />
+            <span className="text-sm font-light">Back to case studies</span>
+          </Link>
         </div>
+      </motion.div>
 
-        <h1 className="text-4xl font-bold">{caseStudy.title}</h1>
+      <div className="px-6 pb-24">
+        <div className="max-w-6xl mx-auto">
+          {/* Header */}
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.1 }}
+            className="mb-12"
+          >
+            <div className="flex flex-wrap gap-3 mb-6">
+              {caseStudy.subjectType && (
+                <span className="text-sm px-3 py-1 border border-black/10 rounded-full text-black/40">
+                  {caseStudy.subjectType}
+                </span>
+              )}
+              <span className="text-sm px-3 py-1 border border-black/10 rounded-full text-black/40">
+                {publishYear}
+              </span>
+              {caseStudy.timeline && (
+                <span className="text-sm px-3 py-1 border border-black/10 rounded-full text-black/40">
+                  {caseStudy.timeline}
+                </span>
+              )}
+              {caseStudy.industry && (
+                <span className="text-sm px-3 py-1 border border-black/10 rounded-full text-black/40">
+                  {caseStudy.industry}
+                </span>
+              )}
+            </div>
 
-        {caseStudy.summary && (
-          <p className="text-xl text-muted-foreground">{caseStudy.summary}</p>
-        )}
+            <h1 className="text-4xl md:text-6xl font-light tracking-tight mb-6">{caseStudy.title}</h1>
 
-        {/* Cover Image */}
-        {caseStudy.coverUrl && (
-          <div className="rounded-lg overflow-hidden">
-            <img
-              src={caseStudy.coverUrl}
-              alt={caseStudy.title}
-              className="w-full h-auto object-cover"
-            />
-          </div>
-        )}
-      </div>
+            {caseStudy.role && <p className="text-xl text-black/50 font-light mb-4">{caseStudy.role}</p>}
 
-      {/* Metadata Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-6 border-y">
-        {caseStudy.subjectName && (
-          <div>
-            <h3 className="text-sm font-semibold text-muted-foreground mb-1">Subject</h3>
-            <p className="text-lg">{caseStudy.subjectName}</p>
-            {caseStudy.subjectType && (
-              <p className="text-sm text-muted-foreground">{caseStudy.subjectType}</p>
+            {caseStudy.summary && (
+              <p className="text-lg text-black/60 font-light leading-relaxed max-w-3xl">{caseStudy.summary}</p>
             )}
-          </div>
-        )}
+          </motion.div>
 
-        {caseStudy.industry && (
-          <div>
-            <h3 className="text-sm font-semibold text-muted-foreground mb-1">Industry</h3>
-            <p className="text-lg">{caseStudy.industry}</p>
-          </div>
-        )}
-
-        {caseStudy.role && (
-          <div>
-            <h3 className="text-sm font-semibold text-muted-foreground mb-1">Role</h3>
-            <p className="text-lg">{caseStudy.role}</p>
-          </div>
-        )}
-
-        {caseStudy.timeline && (
-          <div>
-            <h3 className="text-sm font-semibold text-muted-foreground mb-1">Timeline</h3>
-            <p className="text-lg">{caseStudy.timeline}</p>
-          </div>
-        )}
-
-        {caseStudy.teamSize && (
-          <div>
-            <h3 className="text-sm font-semibold text-muted-foreground mb-1">Team Size</h3>
-            <p className="text-lg">{caseStudy.teamSize}</p>
-          </div>
-        )}
-
-        {caseStudy.audience && (
-          <div>
-            <h3 className="text-sm font-semibold text-muted-foreground mb-1">Audience</h3>
-            <p className="text-lg">{caseStudy.audience}</p>
-          </div>
-        )}
-      </div>
-
-      {/* Tags, Skills, Stack */}
-      {(caseStudy.tags.length > 0 || caseStudy.skills.length > 0 || caseStudy.stack.length > 0) && (
-        <div className="space-y-4">
-          {caseStudy.tags.length > 0 && (
-            <div>
-              <h3 className="text-sm font-semibold text-muted-foreground mb-2">Tags</h3>
-              <div className="flex flex-wrap gap-2">
-                {caseStudy.tags.map((tag) => (
-                  <Badge key={tag} variant="secondary">
-                    {tag}
-                  </Badge>
-                ))}
+          {/* Hero Image */}
+          {caseStudy.coverUrl && (
+            <motion.div
+              initial={{ opacity: 0, y: 40 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.2 }}
+              className="mb-20"
+            >
+              <div className="aspect-video rounded-lg overflow-hidden border border-black/10">
+                <img src={caseStudy.coverUrl} alt={caseStudy.title} className="w-full h-full object-cover" />
               </div>
-            </div>
+            </motion.div>
           )}
 
-          {caseStudy.skills.length > 0 && (
-            <div>
-              <h3 className="text-sm font-semibold text-muted-foreground mb-2">Skills</h3>
-              <div className="flex flex-wrap gap-2">
-                {caseStudy.skills.map((skill) => (
-                  <Badge key={skill} variant="outline">
-                    {skill}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {caseStudy.stack.length > 0 && (
-            <div>
-              <h3 className="text-sm font-semibold text-muted-foreground mb-2">Tech Stack</h3>
+          {/* Tags & Stack */}
+          {caseStudy.stack && caseStudy.stack.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.3 }}
+              className="mb-16"
+            >
               <div className="flex flex-wrap gap-2">
                 {caseStudy.stack.map((tech) => (
-                  <Badge key={tech} variant="outline">
+                  <span key={tech} className="text-xs px-3 py-1.5 bg-black text-white rounded-full">
                     {tech}
-                  </Badge>
+                  </span>
                 ))}
               </div>
-            </div>
+            </motion.div>
           )}
-        </div>
-      )}
 
-      {/* Links */}
-      {caseStudy.links.length > 0 && (
-        <div className="space-y-2">
-          <h3 className="text-sm font-semibold text-muted-foreground">Links</h3>
-          <div className="flex flex-wrap gap-2">
-            {caseStudy.links.map((link, index) => (
-              <a
-                key={index}
-                href={link.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center"
+          {/* MDX Error Message */}
+          {mdxError && (
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-8 p-6 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-red-800 font-medium mb-2">MDX Parsing Error</p>
+              <p className="text-red-700 text-sm">{mdxError}</p>
+              <p className="text-red-600 text-xs mt-2">
+                Common issues: unclosed curly braces {"{}"}, invalid JSX syntax, or special characters in code blocks.
+              </p>
+            </motion.div>
+          )}
+
+          {/* MDX Content */}
+          {mdxSource && (
+            <motion.div
+              initial={{ opacity: 0, y: 40 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.4 }}
+              className="mb-20"
+            >
+              <article
+                className="prose prose-lg max-w-none
+                prose-headings:font-light prose-headings:tracking-tight
+                prose-h1:text-4xl prose-h1:mb-6 prose-h1:text-black
+                prose-h2:text-3xl prose-h2:mt-12 prose-h2:mb-6 prose-h2:text-black
+                prose-h3:text-2xl prose-h3:mt-8 prose-h3:mb-4 prose-h3:text-black
+                prose-p:text-black/70 prose-p:leading-relaxed prose-p:mb-4
+                prose-a:text-black prose-a:underline prose-a:decoration-black/20
+                hover:prose-a:decoration-black/60
+                prose-strong:text-black prose-strong:font-medium
+                prose-code:text-black/80 prose-code:bg-black/5
+                prose-code:px-2 prose-code:py-0.5 prose-code:rounded prose-code:before:content-[''] prose-code:after:content-['']
+                prose-pre:bg-black/5 prose-pre:border prose-pre:border-black/10
+                prose-pre:rounded-lg prose-pre:p-4
+                prose-ul:list-disc prose-ul:my-6 prose-ul:pl-6
+                prose-ol:list-decimal prose-ol:my-6 prose-ol:pl-6
+                prose-li:text-black/70 prose-li:my-2
+                prose-blockquote:border-l-4 prose-blockquote:border-black/20
+                prose-blockquote:pl-4 prose-blockquote:italic prose-blockquote:text-black/60
+                prose-img:rounded-lg prose-img:my-8
+                [&_table]:border-collapse [&_table]:w-full
+                [&_th]:text-left [&_th]:font-medium [&_th]:text-black
+                [&_td]:text-black/70"
               >
-                <Button variant="outline" size="sm">
-                  {link.label}
-                </Button>
-              </a>
-            ))}
-          </div>
-        </div>
-      )}
+                <MDXRemote
+                  {...mdxSource}
+                  components={{
+                    // Chart components
+                    ...ChartComponents,
+                    // HTML/Markdown components
+                    h1: (props: any) => <h1 className="text-4xl font-light tracking-tight mb-6 text-black" {...props} />,
+                    h2: (props: any) => <h2 className="text-3xl font-light tracking-tight mt-12 mb-6 text-black" {...props} />,
+                    h3: (props: any) => <h3 className="text-2xl font-light tracking-tight mt-8 mb-4 text-black" {...props} />,
+                    h4: (props: any) => <h4 className="text-xl font-light tracking-tight mt-6 mb-3 text-black" {...props} />,
+                    p: (props: any) => <p className="text-black/70 leading-relaxed mb-4" {...props} />,
+                    a: (props: any) => (
+                      <a className="text-black underline decoration-black/20 hover:decoration-black/60 transition-colors" {...props} />
+                    ),
+                    ul: (props: any) => <ul className="list-disc pl-6 my-6 space-y-2" {...props} />,
+                    ol: (props: any) => <ol className="list-decimal pl-6 my-6 space-y-2" {...props} />,
+                    li: (props: any) => <li className="text-black/70" {...props} />,
+                    blockquote: (props: any) => (
+                      <blockquote className="border-l-4 border-black/20 pl-4 italic text-black/60 my-6" {...props} />
+                    ),
+                    code: (props: any) => (
+                      <code className="text-black/80 bg-black/5 px-2 py-0.5 rounded text-sm font-mono" {...props} />
+                    ),
+                    pre: (props: any) => (
+                      <pre className="bg-black/5 border border-black/10 rounded-lg p-4 overflow-x-auto my-6" {...props} />
+                    ),
+                    table: (props: any) => (
+                      <div className="overflow-x-auto my-8 border border-black/10 rounded-lg">
+                        <table className="min-w-full" {...props} />
+                      </div>
+                    ),
+                    thead: (props: any) => <thead className="bg-black/5 border-b-2 border-black/20" {...props} />,
+                    tbody: (props: any) => <tbody className="bg-white divide-y divide-black/10" {...props} />,
+                    tr: (props: any) => <tr className="hover:bg-black/[0.02] transition-colors" {...props} />,
+                    th: (props: any) => (
+                      <th className="px-6 py-4 text-left text-sm font-medium text-black whitespace-nowrap" {...props} />
+                    ),
+                    td: (props: any) => <td className="px-6 py-4 text-sm text-black/70 whitespace-normal" {...props} />,
+                    img: ({ alt, ...props }: any) => <img className="rounded-lg my-8 w-full" alt={alt || ""} {...props} />,
+                    hr: (props: any) => <hr className="my-8 border-black/10" {...props} />,
+                  }}
+                />
+              </article>
+            </motion.div>
+          )}
 
-      {/* Metrics */}
-      {caseStudy.metrics.length > 0 && (
-        <div className="space-y-2">
-          <h3 className="text-sm font-semibold text-muted-foreground">Key Metrics</h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {caseStudy.metrics.map((metric, index) => (
-              <div key={index} className="bg-muted p-4 rounded-lg text-center">
-                <p className="text-2xl font-bold">{metric.value}</p>
-                <p className="text-sm text-muted-foreground">{metric.label}</p>
+          {/* Links */}
+          {caseStudy.links && caseStudy.links.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 40 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.8 }}
+              className="mb-20"
+            >
+              <p className="text-sm tracking-[0.3em] uppercase text-black/40 mb-6">Links</p>
+              <div className="flex flex-wrap gap-4">
+                {caseStudy.links.map((link, i) => (
+                  <motion.a
+                    key={i}
+                    href={link.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    whileInView={{ opacity: 1, scale: 1 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.5, delay: i * 0.1 }}
+                    className="inline-flex items-center gap-2 px-6 py-3 border border-black/20 rounded-full text-sm hover:bg-black hover:text-white transition-colors group"
+                  >
+                    {link.label}
+                    <IconExternalLink className="w-4 h-4 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" strokeWidth={1.5} />
+                  </motion.a>
+                ))}
               </div>
-            ))}
-          </div>
+            </motion.div>
+          )}
+
+          {/* Gallery */}
+          {caseStudy.galleryUrls && caseStudy.galleryUrls.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 40 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.8 }}
+              className="mb-20"
+            >
+              <p className="text-sm tracking-[0.3em] uppercase text-black/40 mb-6">Gallery</p>
+              <div className="grid md:grid-cols-2 gap-6">
+                {caseStudy.galleryUrls.map((url, i) => (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    whileInView={{ opacity: 1, scale: 1 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.5, delay: i * 0.1 }}
+                    className="aspect-video rounded-lg overflow-hidden border border-black/10"
+                  >
+                    <img
+                      src={url}
+                      alt={`Gallery image ${i + 1}`}
+                      className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
+                    />
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+
+          {/* CTA */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8 }}
+            className="border-t border-black/10 pt-16 text-center"
+          >
+            <p className="text-lg text-black/50 font-light mb-6">Interested in similar results?</p>
+            <Link
+              href="/contact"
+              className="inline-flex items-center gap-2 px-6 py-3 border border-black/20 rounded-full text-sm hover:bg-black hover:text-white transition-colors"
+            >
+              Get in touch
+            </Link>
+          </motion.div>
         </div>
-      )}
-
-      {/* Results */}
-      {caseStudy.results.length > 0 && (
-        <div className="space-y-2">
-          <h3 className="text-sm font-semibold text-muted-foreground">Results</h3>
-          <ul className="list-disc list-inside space-y-1">
-            {caseStudy.results.map((result, index) => (
-              <li key={index}>{result.text}</li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {/* MDX Content */}
-      <div className="prose prose-lg dark:prose-invert max-w-none py-8">
-        {mdxError ? (
-          <div className="bg-destructive/10 border border-destructive text-destructive p-4 rounded-lg">
-            <h3 className="font-semibold mb-2">Error Loading Content</h3>
-            <p>{mdxError}</p>
-            <p className="text-sm mt-2">Please edit the case study and fix any syntax errors in the MDX content.</p>
-          </div>
-        ) : mdxContent ? (
-          <MDXRemote
-            source={mdxContent}
-            components={components}
-            options={{
-              mdxOptions: {
-                remarkPlugins: [remarkGfm],
-              },
-            }}
-          />
-        ) : (
-          <div className="bg-muted p-4 rounded-lg">
-            <p className="text-muted-foreground">No content available</p>
-          </div>
-        )}
-      </div>
-
-      {/* Footer */}
-      <div className="border-t pt-6 text-sm text-muted-foreground">
-        <p>Created: {new Date(caseStudy.createdAt).toLocaleDateString()}</p>
-        <p>Last Updated: {new Date(caseStudy.updatedAt).toLocaleDateString()}</p>
-        <p>Views: {caseStudy.views}</p>
       </div>
     </div>
   )
 }
-
