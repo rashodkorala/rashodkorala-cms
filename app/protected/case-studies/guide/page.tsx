@@ -347,8 +347,8 @@ We took a user-first approach:
             MDX has special characters that need to be escaped. Common issues:
           </p>
           <ul className="list-disc list-inside space-y-2 text-yellow-800 dark:text-yellow-300 mb-4">
-            <li><strong>Curly braces:</strong> Escape as <code className="bg-yellow-100 dark:bg-yellow-900 px-1 rounded">\{</code> and <code className="bg-yellow-100 dark:bg-yellow-900 px-1 rounded">\}</code> or use code blocks</li>
-            <li><strong>Angle brackets:</strong> Escape as <code className="bg-yellow-100 dark:bg-yellow-900 px-1 rounded">\&lt;</code> and <code className="bg-yellow-100 dark:bg-yellow-900 px-1 rounded">\&gt;</code></li>
+            <li><strong>Curly braces:</strong> Escape as <code className="bg-yellow-100 dark:bg-yellow-900 px-1 rounded">{'{'}</code> and <code className="bg-yellow-100 dark:bg-yellow-900 px-1 rounded">{'}'}</code> or use code blocks</li>
+            <li><strong>Angle brackets:</strong> Escape as <code className="bg-yellow-100 dark:bg-yellow-900 px-1 rounded">{'<'}</code> and <code className="bg-yellow-100 dark:bg-yellow-900 px-1 rounded">{'>'}</code></li>
             <li><strong>Code examples:</strong> Always put code with special characters in code blocks (triple backticks)</li>
           </ul>
           <p className="text-sm text-yellow-700 dark:text-yellow-400">
