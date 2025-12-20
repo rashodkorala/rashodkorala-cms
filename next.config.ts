@@ -3,9 +3,6 @@ import createMDX from "@next/mdx";
 
 const nextConfig: NextConfig = {
   pageExtensions: ["js", "jsx", "md", "mdx", "ts", "tsx"],
-  serverActions: {
-    bodySizeLimit: "10MB", // Allow larger MDX content with charts
-  },
   images: {
     // Allow images from Supabase Storage
     remotePatterns: [

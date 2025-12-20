@@ -29,7 +29,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { CaseStudyForm } from "./case-study-form"
 import type { CaseStudy } from "@/lib/types/case-study"
 import { deleteCaseStudy } from "@/lib/actions/case-studies"
 import { cn } from "@/lib/utils"
@@ -47,8 +46,6 @@ const statusColors = {
 export function CaseStudies({ initialCaseStudies }: CaseStudiesProps) {
   const router = useRouter()
   const [caseStudies, setCaseStudies] = useState<CaseStudy[]>(initialCaseStudies)
-  const [isFormOpen, setIsFormOpen] = useState(false)
-  const [editingCaseStudy, setEditingCaseStudy] = useState<CaseStudy | null>(null)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [statusFilter, setStatusFilter] = useState<string>("all")
 
@@ -78,21 +75,11 @@ export function CaseStudies({ initialCaseStudies }: CaseStudiesProps) {
   }
 
   const handleEdit = (caseStudy: CaseStudy) => {
-    setEditingCaseStudy(caseStudy)
-    setIsFormOpen(true)
+    router.push(`/protected/case-studies/${caseStudy.slug}`)
   }
 
   const handleNew = () => {
-    setEditingCaseStudy(null)
-    setIsFormOpen(true)
-  }
-
-  const handleFormClose = (shouldRefresh: boolean = true) => {
-    setIsFormOpen(false)
-    setEditingCaseStudy(null)
-    if (shouldRefresh) {
-      router.refresh()
-    }
+    router.push("/protected/case-studies/new")
   }
 
   const handleRefresh = async () => {
@@ -198,7 +185,6 @@ export function CaseStudies({ initialCaseStudies }: CaseStudiesProps) {
             <TableRow>
               <TableHead>Title</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>Order</TableHead>
               <TableHead>Views</TableHead>
               <TableHead>Published</TableHead>
               <TableHead className="text-right">Actions</TableHead>
@@ -220,7 +206,6 @@ export function CaseStudies({ initialCaseStudies }: CaseStudiesProps) {
                     {caseStudy.status}
                   </Badge>
                 </TableCell>
-                <TableCell>{caseStudy.orderIndex}</TableCell>
                 <TableCell>
                   <div className="flex items-center gap-1">
                     <IconEye className="h-4 w-4 text-muted-foreground" />
@@ -278,11 +263,6 @@ export function CaseStudies({ initialCaseStudies }: CaseStudiesProps) {
         </div>
       )}
 
-      <CaseStudyForm
-        isOpen={isFormOpen}
-        onClose={handleFormClose}
-        editingCaseStudy={editingCaseStudy}
-      />
     </div>
   )
 }
