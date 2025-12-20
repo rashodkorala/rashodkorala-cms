@@ -198,7 +198,7 @@ export function CaseStudyForm({ caseStudy, mdxContent = "" }: CaseStudyFormProps
       }
 
       // Upload gallery images
-      let galleryUrls = formData.galleryUrls.filter((url) => url.startsWith("http"))
+      const galleryUrls = formData.galleryUrls.filter((url) => url.startsWith("http"))
       for (const file of galleryImageFiles) {
         const url = await uploadMedia(file)
         galleryUrls.push(url)
